@@ -224,10 +224,93 @@
 			});
 		});
 	}
+	var CUSTOM_WORDS_PREFIX = "customWords.";
+	function loadCustomWords(langKey) {
+		return _GM_getValue(CUSTOM_WORDS_PREFIX + langKey, {});
+	}
+	function saveCustomWords(langKey, words) {
+		_GM_setValue(CUSTOM_WORDS_PREFIX + langKey, words);
+	}
+	function openCustomWordsDialog(langKey, placeholders) {
+		if (document.getElementById("cleansns-custom-words")) return;
+		const current = loadCustomWords(langKey);
+		const backdrop = document.createElement("div");
+		backdrop.id = "cleansns-custom-words";
+		backdrop.style.cssText = "position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-family:sans-serif;";
+		const panel = document.createElement("form");
+		panel.style.cssText = "background:#fff;color:#111;border-radius:8px;padding:20px;width:min(90vw,420px);max-height:85vh;overflow:auto;box-shadow:0 4px 24px rgba(0,0,0,.3);";
+		const title = document.createElement("h2");
+		title.textContent = "あなたの言語の単語を設定 / Set your language’s words";
+		title.style.cssText = "font-size:16px;margin:0 0 8px;";
+		panel.appendChild(title);
+		const hint = document.createElement("p");
+		hint.textContent = `Facebookの現在の表示言語コード: "${langKey}"。空欄のままなら下のプレースホルダー(現在使われている単語)がそのまま使われます。`;
+		hint.style.cssText = "font-size:12px;color:#666;margin:0 0 16px;";
+		panel.appendChild(hint);
+		const inputs = {};
+		Object.keys(LABELS).forEach((key) => {
+			const label = document.createElement("label");
+			label.style.cssText = "display:block;font-size:13px;margin-bottom:12px;";
+			label.textContent = LABELS[key];
+			const input = document.createElement("input");
+			input.type = "text";
+			input.value = current[key] ?? "";
+			input.placeholder = placeholders[key];
+			input.style.cssText = "display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:6px 8px;border:1px solid #ccc;border-radius:4px;font-size:14px;";
+			label.appendChild(input);
+			panel.appendChild(label);
+			inputs[key] = input;
+		});
+		const buttonRow = document.createElement("div");
+		buttonRow.style.cssText = "display:flex;gap:8px;justify-content:flex-end;margin-top:8px;";
+		const cancelBtn = document.createElement("button");
+		cancelBtn.type = "button";
+		cancelBtn.textContent = "キャンセル";
+		cancelBtn.style.cssText = "padding:8px 14px;border:1px solid #ccc;border-radius:4px;background:#f5f5f5;cursor:pointer;";
+		cancelBtn.addEventListener("click", () => backdrop.remove());
+		const saveBtn = document.createElement("button");
+		saveBtn.type = "submit";
+		saveBtn.textContent = "保存して再読み込み";
+		saveBtn.style.cssText = "padding:8px 14px;border:none;border-radius:4px;background:#1877f2;color:#fff;cursor:pointer;";
+		buttonRow.append(cancelBtn, saveBtn);
+		panel.appendChild(buttonRow);
+		panel.addEventListener("submit", (e) => {
+			e.preventDefault();
+			const words = {};
+			Object.keys(inputs).forEach((key) => {
+				const v = inputs[key].value.trim();
+				if (v) words[key] = v;
+			});
+			saveCustomWords(langKey, words);
+			location.reload();
+		});
+		backdrop.addEventListener("click", (e) => {
+			if (e.target === backdrop) backdrop.remove();
+		});
+		backdrop.appendChild(panel);
+		document.body.appendChild(backdrop);
+	}
+	function registerCustomWordsMenu(langKey, placeholders) {
+		_GM_registerMenuCommand("⚙️ あなたの言語の単語を設定 / Set your language’s words", () => {
+			openCustomWordsDialog(langKey, placeholders);
+		});
+	}
 	var HIDE_MARK = "data-cleansns-hidden";
 	var DICT = buildDict();
+	var LANG_KEY = resolveLangKey();
+	var CUSTOM_WORDS = loadCustomWords(LANG_KEY);
+	if (CUSTOM_WORDS.ad) DICT.ad = CUSTOM_WORDS.ad;
+	if (CUSTOM_WORDS.addFriend) DICT.addFriend = CUSTOM_WORDS.addFriend;
+	if (CUSTOM_WORDS.follow) DICT.follow = CUSTOM_WORDS.follow;
+	if (CUSTOM_WORDS.join) DICT.join = CUSTOM_WORDS.join;
 	var FLAGS = loadFlags();
 	registerToggleMenu(FLAGS);
+	registerCustomWordsMenu(LANG_KEY, {
+		ad: DICT.ad,
+		addFriend: DICT.addFriend,
+		follow: DICT.follow,
+		join: DICT.join
+	});
 	var uniq = (arr) => Array.from(new Set(arr.filter((v) => !!v)));
 	var ALL_AD_WORDS = FLAGS.ad ? Object.values(AD_WORDS_BY_LANG) : [];
 	var MOBILE_CTA_WORDS = uniq([

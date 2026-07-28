@@ -11,6 +11,14 @@ right-click the Tampermonkey icon → the script's menu items). Toggling
 reloads the page to apply. The suggested-groups carousel, Reels, and Stories
 bar aren't independently toggleable yet.
 
+That same menu also has "⚙️ Set your language's words" — a small on-page
+form for the same four categories, prefilled with whatever word this script
+is currently using as a placeholder. If you speak a language this script
+doesn't handle well yet, you can type in the correct word yourself, right on
+your own Facebook feed, and save — no source edit, rebuild, or PR required.
+(It's still worth sending a PR to add it to `src/i18n.ts` so everyone else
+gets it too, but it's no longer required just to fix things for yourself.)
+
 Not affiliated with or endorsed by Meta/Facebook.
 
 ## Install
@@ -65,11 +73,15 @@ languages without a full `I18N` entry) is a best-effort guess or falls back
 to English. A wrong or missing entry just means nothing gets hidden in that
 language (a safe failure), never that the wrong thing gets hidden.
 
-**To add or fix a language:**
+**Just want it working in your own language, right now?** Set your Facebook
+account's display language (Settings → Language and Region — not just your
+browser/device language, which Facebook ignores once you're logged in), then
+open the "⚙️ Set your language's words" menu described above and fill in the
+four words. Done — no repo checkout needed.
 
-1. Set your Facebook account's display language (Settings → Language and
-   Region), not just your browser/device language — Facebook ignores the
-   browser's language once you're logged in.
+**To contribute the fix back for everyone else:**
+
+1. Set your Facebook account's display language as above.
 2. Install the [debug build](./dist/facebook-feed-cleaner-debug.user.js) and
    open your feed — the overlay lists every CTA text it found.
 3. Add or correct the entry for your language code in `src/i18n.ts`'s

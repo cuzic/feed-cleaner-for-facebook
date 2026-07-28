@@ -202,7 +202,7 @@ export const AD_WORDS_BY_LANG: Record<string, string> = {
   'zh-hant': '贊助',
 };
 
-function resolveLangKey(): string {
+export function resolveLangKey(): string {
   const raw = (document.documentElement.lang || navigator.language || 'en').toLowerCase();
   if (raw.startsWith('zh-hant') || raw === 'zh-tw' || raw === 'zh-hk') return 'zh-hant';
   if (raw.startsWith('zh')) return 'zh-hans';

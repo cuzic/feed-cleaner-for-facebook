@@ -1,11 +1,27 @@
-import { buildDict, AD_WORDS_BY_LANG } from './i18n';
-import { loadFlags, registerToggleMenu } from './settings';
+import { buildDict, AD_WORDS_BY_LANG, resolveLangKey } from './i18n';
+import { loadFlags, registerToggleMenu, loadCustomWords, registerCustomWordsMenu } from './settings';
 
 const HIDE_MARK = 'data-cleansns-hidden';
 
 const DICT = buildDict();
+const LANG_KEY = resolveLangKey();
+// User-supplied overrides (see settings.ts) win over both the built-in dict
+// and the bulk-sourced AD_WORDS_BY_LANG fallback — someone who bothered to
+// type in their own language's word knows it better than either of those.
+const CUSTOM_WORDS = loadCustomWords(LANG_KEY);
+if (CUSTOM_WORDS.ad) DICT.ad = CUSTOM_WORDS.ad;
+if (CUSTOM_WORDS.addFriend) DICT.addFriend = CUSTOM_WORDS.addFriend;
+if (CUSTOM_WORDS.follow) DICT.follow = CUSTOM_WORDS.follow;
+if (CUSTOM_WORDS.join) DICT.join = CUSTOM_WORDS.join;
+
 const FLAGS = loadFlags();
 registerToggleMenu(FLAGS);
+registerCustomWordsMenu(LANG_KEY, {
+  ad: DICT.ad,
+  addFriend: DICT.addFriend,
+  follow: DICT.follow,
+  join: DICT.join,
+});
 
 const uniq = (arr: (string | undefined)[]): string[] =>
   Array.from(new Set(arr.filter((v): v is string => !!v)));
