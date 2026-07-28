@@ -1,8 +1,12 @@
 import { buildDict, AD_WORDS_BY_LANG } from './i18n';
+import { loadFlags, registerToggleMenu } from './settings';
 
 const HIDE_MARK = 'data-cleansns-hidden';
 
 const DICT = buildDict();
+const FLAGS = loadFlags();
+registerToggleMenu(FLAGS);
+
 const uniq = (arr: (string | undefined)[]): string[] =>
   Array.from(new Set(arr.filter((v): v is string => !!v)));
 // Every known "Sponsored"/"Ad" word across ~60 languages is merged into both
@@ -10,15 +14,27 @@ const uniq = (arr: (string | undefined)[]): string[] =>
 // — a post's text legitimately starting with e.g. the Finnish word for
 // "Sponsored" on a Japanese-language feed is effectively impossible, so this
 // only adds coverage, including against html-lang mismatches, with no
-// realistic over-matching risk.
-const ALL_AD_WORDS = Object.values(AD_WORDS_BY_LANG);
-const MOBILE_CTA_WORDS = uniq([DICT.ad, DICT.addFriend, DICT.follow, DICT.join, ...ALL_AD_WORDS]);
+// realistic over-matching risk. It's still gated by FLAGS.ad, same as DICT.ad.
+const ALL_AD_WORDS = FLAGS.ad ? Object.values(AD_WORDS_BY_LANG) : [];
+const MOBILE_CTA_WORDS = uniq([
+  FLAGS.ad ? DICT.ad : undefined,
+  FLAGS.addFriend ? DICT.addFriend : undefined,
+  FLAGS.follow ? DICT.follow : undefined,
+  FLAGS.join ? DICT.join : undefined,
+  ...ALL_AD_WORDS,
+]);
 // Desktop ad/add-friend hiding is unverified against the current DOM (see
 // README) — it reuses the same generic "short exact-match text node inside a
 // data-pagelet wrapper" technique already proven for Follow/Join, on the
 // assumption those labels are still their own standalone text nodes like
 // Follow/Join are.
-const DESKTOP_CTA_WORDS = uniq([DICT.follow, DICT.join, DICT.ad, DICT.addFriend, ...ALL_AD_WORDS]);
+const DESKTOP_CTA_WORDS = uniq([
+  FLAGS.follow ? DICT.follow : undefined,
+  FLAGS.join ? DICT.join : undefined,
+  FLAGS.ad ? DICT.ad : undefined,
+  FLAGS.addFriend ? DICT.addFriend : undefined,
+  ...ALL_AD_WORDS,
+]);
 
 // The length cap exists to stop a CTA word from matching as the mere prefix of an
 // unrelated sentence (e.g. a post starting with "Follow the money..."), not to

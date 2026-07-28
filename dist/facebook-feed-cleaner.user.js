@@ -3,14 +3,16 @@
 // @namespace    https://github.com/cuzic/feed-cleaner-for-facebook
 // @version      2.0.0
 // @author       cuzic
-// @description  Unofficial, not affiliated with or endorsed by Meta/Facebook. Hides suggested/ad posts (Ad/Add friend/Follow/Join CTAs), the suggested-groups carousel, the stories bar (mobile), and the Follow/Join/Reels/Stories units (desktop) on Facebook. Works in any Facebook UI language; see README to add or fix a language.
+// @description  Unofficial, not affiliated with or endorsed by Meta/Facebook. Hides suggested/ad posts (Ad/Add friend/Follow/Join CTAs), the suggested-groups carousel, the stories bar (mobile), and the Follow/Join/Reels/Stories units (desktop) on Facebook. Works in any Facebook UI language; each CTA category can be toggled from the userscript manager's menu. See README to add or fix a language.
 // @license      MIT
 // @supportURL   https://github.com/cuzic/feed-cleaner-for-facebook/issues
 // @downloadURL  https://raw.githubusercontent.com/cuzic/feed-cleaner-for-facebook/main/dist/facebook-feed-cleaner.user.js
 // @updateURL    https://raw.githubusercontent.com/cuzic/feed-cleaner-for-facebook/main/dist/facebook-feed-cleaner.user.js
 // @match        https://m.facebook.com/*
 // @match        https://www.facebook.com/*
-// @grant        none
+// @grant        GM_getValue
+// @grant        GM_registerMenuCommand
+// @grant        GM_setValue
 // @run-at       document-idle
 // ==/UserScript==
 
@@ -191,22 +193,55 @@
 		if (adFallback && !(langKey in I18N)) merged.ad = adFallback;
 		return merged;
 	}
+	var _GM_getValue = (() => typeof GM_getValue != "undefined" ? GM_getValue : void 0)();
+	var _GM_registerMenuCommand = (() => typeof GM_registerMenuCommand != "undefined" ? GM_registerMenuCommand : void 0)();
+	var _GM_setValue = (() => typeof GM_setValue != "undefined" ? GM_setValue : void 0)();
+	var DEFAULTS = {
+		ad: true,
+		addFriend: true,
+		follow: true,
+		join: true
+	};
+	var STORAGE_PREFIX = "hide.";
+	function loadFlags() {
+		const flags = {};
+		Object.keys(DEFAULTS).forEach((key) => {
+			flags[key] = _GM_getValue(STORAGE_PREFIX + key, DEFAULTS[key]);
+		});
+		return flags;
+	}
+	var LABELS = {
+		ad: "広告 / Ad",
+		addFriend: "友達になる / Add friend",
+		follow: "フォローする / Follow",
+		join: "参加する / Join"
+	};
+	function registerToggleMenu(flags) {
+		Object.keys(flags).forEach((key) => {
+			_GM_registerMenuCommand(`${flags[key] ? "✅" : "⬜"} ${LABELS[key]}を隠す`, () => {
+				_GM_setValue(STORAGE_PREFIX + key, !flags[key]);
+				location.reload();
+			});
+		});
+	}
 	var HIDE_MARK = "data-cleansns-hidden";
 	var DICT = buildDict();
+	var FLAGS = loadFlags();
+	registerToggleMenu(FLAGS);
 	var uniq = (arr) => Array.from(new Set(arr.filter((v) => !!v)));
-	var ALL_AD_WORDS = Object.values(AD_WORDS_BY_LANG);
+	var ALL_AD_WORDS = FLAGS.ad ? Object.values(AD_WORDS_BY_LANG) : [];
 	var MOBILE_CTA_WORDS = uniq([
-		DICT.ad,
-		DICT.addFriend,
-		DICT.follow,
-		DICT.join,
+		FLAGS.ad ? DICT.ad : void 0,
+		FLAGS.addFriend ? DICT.addFriend : void 0,
+		FLAGS.follow ? DICT.follow : void 0,
+		FLAGS.join ? DICT.join : void 0,
 		...ALL_AD_WORDS
 	]);
 	var DESKTOP_CTA_WORDS = uniq([
-		DICT.follow,
-		DICT.join,
-		DICT.ad,
-		DICT.addFriend,
+		FLAGS.follow ? DICT.follow : void 0,
+		FLAGS.join ? DICT.join : void 0,
+		FLAGS.ad ? DICT.ad : void 0,
+		FLAGS.addFriend ? DICT.addFriend : void 0,
 		...ALL_AD_WORDS
 	]);
 	var maxCtaLen = (words) => Math.max(...words.map((w) => w.length)) + 2;

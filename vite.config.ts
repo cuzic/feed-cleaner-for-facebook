@@ -14,11 +14,11 @@ export default defineConfig({
         namespace: 'https://github.com/cuzic/feed-cleaner-for-facebook',
         version: '2.0.0',
         description:
-          'Unofficial, not affiliated with or endorsed by Meta/Facebook. Hides suggested/ad posts (Ad/Add friend/Follow/Join CTAs), the suggested-groups carousel, the stories bar (mobile), and the Follow/Join/Reels/Stories units (desktop) on Facebook. Works in any Facebook UI language; see README to add or fix a language.',
+          "Unofficial, not affiliated with or endorsed by Meta/Facebook. Hides suggested/ad posts (Ad/Add friend/Follow/Join CTAs), the suggested-groups carousel, the stories bar (mobile), and the Follow/Join/Reels/Stories units (desktop) on Facebook. Works in any Facebook UI language; each CTA category can be toggled from the userscript manager's menu. See README to add or fix a language.",
         match: ['https://m.facebook.com/*', 'https://www.facebook.com/*'],
         'run-at': 'document-idle',
         license: 'MIT',
-        grant: 'none',
+        grant: ['GM_getValue', 'GM_setValue', 'GM_registerMenuCommand'],
         updateURL:
           'https://raw.githubusercontent.com/cuzic/feed-cleaner-for-facebook/main/dist/facebook-feed-cleaner.user.js',
         downloadURL:

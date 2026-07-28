@@ -5,6 +5,12 @@ Facebook feed: sponsored/ad posts, "Add Friend"/"Follow"/"Join" suggestion
 posts (all on both mobile and desktop), the suggested-groups carousel, Reels,
 and the Stories bar/tray.
 
+Each of the four CTA categories (Ad / Add friend / Follow / Join) can be
+turned on or off independently from your userscript manager's menu (e.g.
+right-click the Tampermonkey icon → the script's menu items). Toggling
+reloads the page to apply. The suggested-groups carousel, Reels, and Stories
+bar aren't independently toggleable yet.
+
 Not affiliated with or endorsed by Meta/Facebook.
 
 ## Install
