@@ -9,7 +9,9 @@ Each of the four CTA categories (Ad / Add friend / Follow / Join) can be
 turned on or off independently from your userscript manager's menu (e.g.
 right-click the Tampermonkey icon → the script's menu items). Toggling
 reloads the page to apply. The suggested-groups carousel, Reels, and Stories
-bar aren't independently toggleable yet.
+bar aren't independently toggleable yet. The menu itself (and the dialogs
+below) are localized in ja/en/es/fr/pt/de/ko, matching Facebook's own
+effective UI language; other languages fall back to English.
 
 That same menu also has "⚙️ Set your language's words" — a small on-page
 form for the same four categories, prefilled with whatever word this script
@@ -18,6 +20,21 @@ doesn't handle well yet, you can type in the correct word yourself, right on
 your own Facebook feed, and save — no source edit, rebuild, or PR required.
 (It's still worth sending a PR to add it to `src/i18n.ts` so everyone else
 gets it too, but it's no longer required just to fix things for yourself.)
+
+There's also a "Show hidden-posts log" toggle (off by default). When on, a
+small `🧹 N` badge sits in the bottom-left corner; tapping it expands to show
+the last 10 hidden items as `category · short snippet`, so you can sanity-check
+what's actually being hidden rather than taking it on faith. `N` is a running
+total for the page, not just what's in that list. It only ever shows content
+already visible to you in your own feed, and it's gone as soon as you turn
+the toggle back off.
+
+**Safety guard against over-matching:** if a CTA match's ancestor wrapper
+turns out to be larger than a few screens' worth of height, it's skipped
+(with a one-time `console.warn`) instead of hidden — a single post is never
+that tall, so anything that size is almost certainly a much bigger container
+(e.g. the whole feed) that a looser-than-intended match should not be allowed
+to hide entirely.
 
 Not affiliated with or endorsed by Meta/Facebook.
 
@@ -91,6 +108,11 @@ four words. Done — no repo checkout needed.
    add or correct just that language's entry in `AD_WORDS_BY_LANG` instead.
 4. `pnpm build` and confirm the generated `dist/*.user.js` hides the right
    posts, then open a PR.
+
+Adding a new language to `src/ui-i18n.ts` (the menu/dialog text this script
+shows *about itself*, as opposed to `src/i18n.ts`'s Facebook-observed CTA
+text) is a separate, independent contribution — see the `UiStrings`
+interface there for the full list of strings to translate.
 
 ## Development
 

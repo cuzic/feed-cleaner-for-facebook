@@ -1,39 +1,39 @@
 import { GM_getValue, GM_setValue, GM_registerMenuCommand } from '$';
+import type { UiStrings } from './ui-i18n';
+import { fmt } from './ui-i18n';
 
-export interface FeatureFlags {
-  ad: boolean;
-  addFriend: boolean;
-  follow: boolean;
-  join: boolean;
-}
+// The four CTA categories that have both a matching word (src/i18n.ts) and a
+// user-overridable word (loadCustomWords below). `showLog` is a toggle too
+// but has no associated word, so it lives in FeatureFlags without being a
+// HideCategory.
+export type HideCategory = 'ad' | 'addFriend' | 'follow' | 'join';
+export const HIDE_CATEGORIES: readonly HideCategory[] = ['ad', 'addFriend', 'follow', 'join'];
+export type FeatureFlagKey = HideCategory | 'showLog';
+export type FeatureFlags = Record<HideCategory, boolean> & { showLog: boolean };
 
-const DEFAULTS: FeatureFlags = { ad: true, addFriend: true, follow: true, join: true };
+const DEFAULTS: FeatureFlags = { ad: true, addFriend: true, follow: true, join: true, showLog: false };
+// Kept as "hide." even though showLog isn't a hide toggle — changing the
+// prefix would silently reset every existing user's saved settings back to
+// these defaults, which is worse than the slightly-off name.
 const STORAGE_PREFIX = 'hide.';
 
 export function loadFlags(): FeatureFlags {
   const flags = {} as FeatureFlags;
-  (Object.keys(DEFAULTS) as (keyof FeatureFlags)[]).forEach((key) => {
+  (Object.keys(DEFAULTS) as FeatureFlagKey[]).forEach((key) => {
     flags[key] = GM_getValue(STORAGE_PREFIX + key, DEFAULTS[key]);
   });
   return flags;
 }
-
-const LABELS: Record<keyof FeatureFlags, string> = {
-  ad: '広告 / Ad',
-  addFriend: '友達になる / Add friend',
-  follow: 'フォローする / Follow',
-  join: '参加する / Join',
-};
 
 // Menu command labels only reflect the state at script load (most userscript
 // managers don't support updating a registered command's caption in place),
 // so toggling reloads the page rather than trying to re-render the menu —
 // simpler and more broadly compatible across Tampermonkey/Violentmonkey/
 // Greasemonkey than juggling GM_unregisterMenuCommand return-value quirks.
-export function registerToggleMenu(flags: FeatureFlags): void {
-  (Object.keys(flags) as (keyof FeatureFlags)[]).forEach((key) => {
+export function registerToggleMenu(flags: FeatureFlags, ui: UiStrings): void {
+  (Object.keys(flags) as FeatureFlagKey[]).forEach((key) => {
     const mark = flags[key] ? '✅' : '⬜';
-    GM_registerMenuCommand(`${mark} ${LABELS[key]}を隠す`, () => {
+    GM_registerMenuCommand(`${mark} ${ui.menu[key]}`, () => {
       GM_setValue(STORAGE_PREFIX + key, !flags[key]);
       location.reload();
     });
@@ -43,10 +43,10 @@ export function registerToggleMenu(flags: FeatureFlags): void {
 // Lets a speaker of a language we don't have good words for fix that
 // themselves, on the spot, in their own Facebook UI language — no source
 // edit / rebuild / PR needed. Overrides are scoped to the current
-// `langKey` (from i18n.ts's resolveLangKey) and only cover the same four
-// fields as the toggle menu above; the fuller Dict (suggestedGroups,
-// createStory, reels, feedStories) still requires a source-level PR.
-export type CustomWords = Partial<Record<keyof FeatureFlags, string>>;
+// `langKey` (from i18n.ts's resolveLangKey) and only cover the four
+// HideCategory fields; the fuller Dict (suggestedGroups, createStory, reels,
+// feedStories) still requires a source-level PR.
+export type CustomWords = Partial<Record<HideCategory, string>>;
 
 const CUSTOM_WORDS_PREFIX = 'customWords.';
 
@@ -58,7 +58,7 @@ function saveCustomWords(langKey: string, words: CustomWords): void {
   GM_setValue(CUSTOM_WORDS_PREFIX + langKey, words);
 }
 
-function openCustomWordsDialog(langKey: string, placeholders: Record<keyof FeatureFlags, string>): void {
+function openCustomWordsDialog(langKey: string, ui: UiStrings, placeholders: Record<HideCategory, string>): void {
   if (document.getElementById('cleansns-custom-words')) return;
   const current = loadCustomWords(langKey);
 
@@ -74,20 +74,20 @@ function openCustomWordsDialog(langKey: string, placeholders: Record<keyof Featu
     'max-height:85vh;overflow:auto;box-shadow:0 4px 24px rgba(0,0,0,.3);';
 
   const title = document.createElement('h2');
-  title.textContent = 'あなたの言語の単語を設定 / Set your language’s words';
+  title.textContent = ui.dialogTitle;
   title.style.cssText = 'font-size:16px;margin:0 0 8px;';
   panel.appendChild(title);
 
   const hint = document.createElement('p');
-  hint.textContent = `Facebookの現在の表示言語コード: "${langKey}"。空欄のままなら下のプレースホルダー(現在使われている単語)がそのまま使われます。`;
+  hint.textContent = fmt(ui.dialogHint, { lang: langKey });
   hint.style.cssText = 'font-size:12px;color:#666;margin:0 0 16px;';
   panel.appendChild(hint);
 
-  const inputs = {} as Record<keyof FeatureFlags, HTMLInputElement>;
-  (Object.keys(LABELS) as (keyof FeatureFlags)[]).forEach((key) => {
+  const inputs = {} as Record<HideCategory, HTMLInputElement>;
+  HIDE_CATEGORIES.forEach((key) => {
     const label = document.createElement('label');
     label.style.cssText = 'display:block;font-size:13px;margin-bottom:12px;';
-    label.textContent = LABELS[key];
+    label.textContent = ui.category[key];
     const input = document.createElement('input');
     input.type = 'text';
     input.value = current[key] ?? '';
@@ -105,13 +105,13 @@ function openCustomWordsDialog(langKey: string, placeholders: Record<keyof Featu
 
   const cancelBtn = document.createElement('button');
   cancelBtn.type = 'button';
-  cancelBtn.textContent = 'キャンセル';
+  cancelBtn.textContent = ui.dialogCancel;
   cancelBtn.style.cssText = 'padding:8px 14px;border:1px solid #ccc;border-radius:4px;background:#f5f5f5;cursor:pointer;';
   cancelBtn.addEventListener('click', () => backdrop.remove());
 
   const saveBtn = document.createElement('button');
   saveBtn.type = 'submit';
-  saveBtn.textContent = '保存して再読み込み';
+  saveBtn.textContent = ui.dialogSave;
   saveBtn.style.cssText = 'padding:8px 14px;border:none;border-radius:4px;background:#1877f2;color:#fff;cursor:pointer;';
 
   buttonRow.append(cancelBtn, saveBtn);
@@ -120,7 +120,7 @@ function openCustomWordsDialog(langKey: string, placeholders: Record<keyof Featu
   panel.addEventListener('submit', (e) => {
     e.preventDefault();
     const words: CustomWords = {};
-    (Object.keys(inputs) as (keyof FeatureFlags)[]).forEach((key) => {
+    HIDE_CATEGORIES.forEach((key) => {
       const v = inputs[key].value.trim();
       if (v) words[key] = v;
     });
@@ -136,8 +136,8 @@ function openCustomWordsDialog(langKey: string, placeholders: Record<keyof Featu
   document.body.appendChild(backdrop);
 }
 
-export function registerCustomWordsMenu(langKey: string, placeholders: Record<keyof FeatureFlags, string>): void {
-  GM_registerMenuCommand('⚙️ あなたの言語の単語を設定 / Set your language’s words', () => {
-    openCustomWordsDialog(langKey, placeholders);
+export function registerCustomWordsMenu(langKey: string, ui: UiStrings, placeholders: Record<HideCategory, string>): void {
+  GM_registerMenuCommand(`⚙️ ${ui.menuCustomWords}`, () => {
+    openCustomWordsDialog(langKey, ui, placeholders);
   });
 }

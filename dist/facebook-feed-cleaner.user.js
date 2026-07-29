@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Feed Cleaner for Facebook
 // @namespace    https://github.com/cuzic/feed-cleaner-for-facebook
-// @version      2.0.0
+// @version      2.1.0
 // @author       cuzic
-// @description  Unofficial, not affiliated with or endorsed by Meta/Facebook. Hides suggested/ad posts (Ad/Add friend/Follow/Join CTAs), the suggested-groups carousel, the stories bar (mobile), and the Follow/Join/Reels/Stories units (desktop) on Facebook. Works in any Facebook UI language; each CTA category can be toggled from the userscript manager's menu. See README to add or fix a language.
+// @description  Unofficial, not affiliated with or endorsed by Meta/Facebook. Hides suggested/ad posts (Ad/Add friend/Follow/Join CTAs), the suggested-groups carousel, the stories bar (mobile), and the Follow/Join/Reels/Stories units (desktop) on Facebook. Works in any Facebook UI language, with the toggle menu and settings dialog themselves localized (ja/en/es/fr/pt/de/ko). Optional hidden-posts log shows what was hidden. See README to add or fix a language.
 // @license      MIT
 // @supportURL   https://github.com/cuzic/feed-cleaner-for-facebook/issues
 // @downloadURL  https://raw.githubusercontent.com/cuzic/feed-cleaner-for-facebook/main/dist/facebook-feed-cleaner.user.js
@@ -196,11 +196,171 @@
 	var _GM_getValue = (() => typeof GM_getValue != "undefined" ? GM_getValue : void 0)();
 	var _GM_registerMenuCommand = (() => typeof GM_registerMenuCommand != "undefined" ? GM_registerMenuCommand : void 0)();
 	var _GM_setValue = (() => typeof GM_setValue != "undefined" ? GM_setValue : void 0)();
+	var UI$1 = {
+		ja: {
+			menu: {
+				ad: "広告を隠す",
+				addFriend: "「友達になる」を隠す",
+				follow: "「フォローする」を隠す",
+				join: "「参加する」を隠す",
+				showLog: "非表示ログを表示する"
+			},
+			menuCustomWords: "あなたの言語の単語を設定",
+			category: {
+				ad: "広告",
+				addFriend: "友達になる",
+				follow: "フォローする",
+				join: "参加する"
+			},
+			dialogTitle: "あなたの言語の単語を設定",
+			dialogHint: "Facebookの現在の表示言語コード: \"{lang}\"。空欄のままなら下のプレースホルダー(現在使われている単語)がそのまま使われます。",
+			dialogCancel: "キャンセル",
+			dialogSave: "保存して再読み込み",
+			logCount: "{n}件を非表示にしました"
+		},
+		en: {
+			menu: {
+				ad: "Hide ads",
+				addFriend: "Hide \"Add friend\"",
+				follow: "Hide \"Follow\"",
+				join: "Hide \"Join\"",
+				showLog: "Show hidden-posts log"
+			},
+			menuCustomWords: "Set your language's words",
+			category: {
+				ad: "Ad",
+				addFriend: "Add friend",
+				follow: "Follow",
+				join: "Join"
+			},
+			dialogTitle: "Set your language's words",
+			dialogHint: "Facebook’s current display language code: \"{lang}\". Leave a field blank to keep using the placeholder shown below (the word currently in use).",
+			dialogCancel: "Cancel",
+			dialogSave: "Save & reload",
+			logCount: "{n} posts hidden"
+		},
+		es: {
+			menu: {
+				ad: "Ocultar anuncios",
+				addFriend: "Ocultar \"Añadir amigo\"",
+				follow: "Ocultar \"Seguir\"",
+				join: "Ocultar \"Unirse\"",
+				showLog: "Mostrar registro de publicaciones ocultas"
+			},
+			menuCustomWords: "Configura las palabras de tu idioma",
+			category: {
+				ad: "Publicidad",
+				addFriend: "Añadir amigo",
+				follow: "Seguir",
+				join: "Unirse"
+			},
+			dialogTitle: "Configura las palabras de tu idioma",
+			dialogHint: "Código de idioma actual de Facebook: \"{lang}\". Si dejas un campo vacío, se seguirá usando el marcador de posición (la palabra usada actualmente).",
+			dialogCancel: "Cancelar",
+			dialogSave: "Guardar y recargar",
+			logCount: "{n} publicaciones ocultas"
+		},
+		fr: {
+			menu: {
+				ad: "Masquer les publicités",
+				addFriend: "Masquer « Ajouter »",
+				follow: "Masquer « Suivre »",
+				join: "Masquer « Rejoindre »",
+				showLog: "Afficher le journal des publications masquées"
+			},
+			menuCustomWords: "Configurez les mots de votre langue",
+			category: {
+				ad: "Publicité",
+				addFriend: "Ajouter",
+				follow: "Suivre",
+				join: "Rejoindre"
+			},
+			dialogTitle: "Configurez les mots de votre langue",
+			dialogHint: "Code de langue actuel de Facebook\xA0: «\xA0{lang}\xA0». Laissez un champ vide pour continuer à utiliser le texte indicatif ci-dessous (le mot actuellement utilisé).",
+			dialogCancel: "Annuler",
+			dialogSave: "Enregistrer et recharger",
+			logCount: "{n} publications masquées"
+		},
+		pt: {
+			menu: {
+				ad: "Ocultar anúncios",
+				addFriend: "Ocultar \"Adicionar amigo\"",
+				follow: "Ocultar \"Seguir\"",
+				join: "Ocultar \"Aderir\"",
+				showLog: "Mostrar registo de publicações ocultas"
+			},
+			menuCustomWords: "Defina as palavras do seu idioma",
+			category: {
+				ad: "Anúncio",
+				addFriend: "Adicionar amigo",
+				follow: "Seguir",
+				join: "Aderir"
+			},
+			dialogTitle: "Defina as palavras do seu idioma",
+			dialogHint: "Código de idioma atual do Facebook: \"{lang}\". Deixe um campo em branco para continuar a usar o texto de exemplo abaixo (a palavra atualmente utilizada).",
+			dialogCancel: "Cancelar",
+			dialogSave: "Guardar e recarregar",
+			logCount: "{n} publicações ocultas"
+		},
+		de: {
+			menu: {
+				ad: "Werbung ausblenden",
+				addFriend: "„Freund hinzufügen“ ausblenden",
+				follow: "„Folgen“ ausblenden",
+				join: "„Beitreten“ ausblenden",
+				showLog: "Protokoll ausgeblendeter Beiträge anzeigen"
+			},
+			menuCustomWords: "Wörter für deine Sprache festlegen",
+			category: {
+				ad: "Werbung",
+				addFriend: "Freund hinzufügen",
+				follow: "Folgen",
+				join: "Beitreten"
+			},
+			dialogTitle: "Wörter für deine Sprache festlegen",
+			dialogHint: "Aktueller Sprachcode von Facebook: „{lang}“. Lässt du ein Feld leer, wird weiterhin der unten angezeigte Platzhalter (das aktuell verwendete Wort) genutzt.",
+			dialogCancel: "Abbrechen",
+			dialogSave: "Speichern & neu laden",
+			logCount: "{n} Beiträge ausgeblendet"
+		},
+		ko: {
+			menu: {
+				ad: "광고 숨기기",
+				addFriend: "\"친구 추가\" 숨기기",
+				follow: "\"팔로우\" 숨기기",
+				join: "\"참여\" 숨기기",
+				showLog: "숨긴 게시물 기록 보기"
+			},
+			menuCustomWords: "내 언어 단어 설정",
+			category: {
+				ad: "광고",
+				addFriend: "친구 추가",
+				follow: "팔로우",
+				join: "참여"
+			},
+			dialogTitle: "내 언어 단어 설정",
+			dialogHint: "현재 Facebook 표시 언어 코드: \"{lang}\". 비워두면 아래에 표시된 자리표시자(현재 사용 중인 단어)가 그대로 사용됩니다.",
+			dialogCancel: "취소",
+			dialogSave: "저장 후 새로고침",
+			logCount: "{n}개 게시물 숨김"
+		}
+	};
+	function buildUiStrings(langKey) {
+		return UI$1[langKey] ?? UI$1.en;
+	}
+	var fmt = (tpl, vars) => tpl.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ""));
+	var HIDE_CATEGORIES = [
+		"ad",
+		"addFriend",
+		"follow",
+		"join"
+	];
 	var DEFAULTS = {
 		ad: true,
 		addFriend: true,
 		follow: true,
-		join: true
+		join: true,
+		showLog: false
 	};
 	var STORAGE_PREFIX = "hide.";
 	function loadFlags() {
@@ -210,15 +370,9 @@
 		});
 		return flags;
 	}
-	var LABELS = {
-		ad: "広告 / Ad",
-		addFriend: "友達になる / Add friend",
-		follow: "フォローする / Follow",
-		join: "参加する / Join"
-	};
-	function registerToggleMenu(flags) {
+	function registerToggleMenu(flags, ui) {
 		Object.keys(flags).forEach((key) => {
-			_GM_registerMenuCommand(`${flags[key] ? "✅" : "⬜"} ${LABELS[key]}を隠す`, () => {
+			_GM_registerMenuCommand(`${flags[key] ? "✅" : "⬜"} ${ui.menu[key]}`, () => {
 				_GM_setValue(STORAGE_PREFIX + key, !flags[key]);
 				location.reload();
 			});
@@ -231,7 +385,7 @@
 	function saveCustomWords(langKey, words) {
 		_GM_setValue(CUSTOM_WORDS_PREFIX + langKey, words);
 	}
-	function openCustomWordsDialog(langKey, placeholders) {
+	function openCustomWordsDialog(langKey, ui, placeholders) {
 		if (document.getElementById("cleansns-custom-words")) return;
 		const current = loadCustomWords(langKey);
 		const backdrop = document.createElement("div");
@@ -240,18 +394,18 @@
 		const panel = document.createElement("form");
 		panel.style.cssText = "background:#fff;color:#111;border-radius:8px;padding:20px;width:min(90vw,420px);max-height:85vh;overflow:auto;box-shadow:0 4px 24px rgba(0,0,0,.3);";
 		const title = document.createElement("h2");
-		title.textContent = "あなたの言語の単語を設定 / Set your language’s words";
+		title.textContent = ui.dialogTitle;
 		title.style.cssText = "font-size:16px;margin:0 0 8px;";
 		panel.appendChild(title);
 		const hint = document.createElement("p");
-		hint.textContent = `Facebookの現在の表示言語コード: "${langKey}"。空欄のままなら下のプレースホルダー(現在使われている単語)がそのまま使われます。`;
+		hint.textContent = fmt(ui.dialogHint, { lang: langKey });
 		hint.style.cssText = "font-size:12px;color:#666;margin:0 0 16px;";
 		panel.appendChild(hint);
 		const inputs = {};
-		Object.keys(LABELS).forEach((key) => {
+		HIDE_CATEGORIES.forEach((key) => {
 			const label = document.createElement("label");
 			label.style.cssText = "display:block;font-size:13px;margin-bottom:12px;";
-			label.textContent = LABELS[key];
+			label.textContent = ui.category[key];
 			const input = document.createElement("input");
 			input.type = "text";
 			input.value = current[key] ?? "";
@@ -265,19 +419,19 @@
 		buttonRow.style.cssText = "display:flex;gap:8px;justify-content:flex-end;margin-top:8px;";
 		const cancelBtn = document.createElement("button");
 		cancelBtn.type = "button";
-		cancelBtn.textContent = "キャンセル";
+		cancelBtn.textContent = ui.dialogCancel;
 		cancelBtn.style.cssText = "padding:8px 14px;border:1px solid #ccc;border-radius:4px;background:#f5f5f5;cursor:pointer;";
 		cancelBtn.addEventListener("click", () => backdrop.remove());
 		const saveBtn = document.createElement("button");
 		saveBtn.type = "submit";
-		saveBtn.textContent = "保存して再読み込み";
+		saveBtn.textContent = ui.dialogSave;
 		saveBtn.style.cssText = "padding:8px 14px;border:none;border-radius:4px;background:#1877f2;color:#fff;cursor:pointer;";
 		buttonRow.append(cancelBtn, saveBtn);
 		panel.appendChild(buttonRow);
 		panel.addEventListener("submit", (e) => {
 			e.preventDefault();
 			const words = {};
-			Object.keys(inputs).forEach((key) => {
+			HIDE_CATEGORIES.forEach((key) => {
 				const v = inputs[key].value.trim();
 				if (v) words[key] = v;
 			});
@@ -290,57 +444,127 @@
 		backdrop.appendChild(panel);
 		document.body.appendChild(backdrop);
 	}
-	function registerCustomWordsMenu(langKey, placeholders) {
-		_GM_registerMenuCommand("⚙️ あなたの言語の単語を設定 / Set your language’s words", () => {
-			openCustomWordsDialog(langKey, placeholders);
+	function registerCustomWordsMenu(langKey, ui, placeholders) {
+		_GM_registerMenuCommand(`⚙️ ${ui.menuCustomWords}`, () => {
+			openCustomWordsDialog(langKey, ui, placeholders);
 		});
+	}
+	var MAX_ENTRIES = 10;
+	function snippet(el, max = 40) {
+		const t = (el.getAttribute("aria-label") ?? el.querySelector("h2, h3, strong, [role=\"heading\"]")?.textContent ?? el.textContent ?? "").replace(/\s+/g, " ").trim();
+		return t.length > max ? t.slice(0, max) + "…" : t;
+	}
+	function createHideLog(ui) {
+		const entries = [];
+		let total = 0;
+		const seen = new WeakSet();
+		let badge = null;
+		let expanded = false;
+		function ensureBadge() {
+			if (badge) return badge;
+			badge = document.createElement("div");
+			badge.style.cssText = "position:fixed;left:8px;bottom:8px;z-index:2147483646;background:#1c1e21;color:#fff;font-family:sans-serif;font-size:12px;border-radius:16px;padding:6px 12px;cursor:pointer;user-select:none;box-shadow:0 1px 6px rgba(0,0,0,.4);";
+			badge.addEventListener("click", () => {
+				expanded = !expanded;
+				render();
+			});
+			document.documentElement.appendChild(badge);
+			return badge;
+		}
+		function render() {
+			const el = ensureBadge();
+			if (!expanded) {
+				el.textContent = `🧹 ${total}`;
+				return;
+			}
+			el.textContent = "";
+			const header = document.createElement("div");
+			header.style.cssText = "font-weight:bold;margin-bottom:4px;";
+			header.textContent = fmt(ui.logCount, { n: total });
+			const rows = document.createElement("div");
+			rows.style.cssText = "white-space:pre-wrap;max-width:60vw;max-height:40vh;overflow:auto;";
+			rows.textContent = entries.slice().reverse().map((e) => `${e.label} · ${e.text}`).join("\n");
+			el.append(header, rows);
+		}
+		return { record(label, el) {
+			if (seen.has(el)) return;
+			seen.add(el);
+			total++;
+			entries.push({
+				label,
+				text: snippet(el)
+			});
+			if (entries.length > MAX_ENTRIES) entries.shift();
+			render();
+		} };
 	}
 	var HIDE_MARK = "data-cleansns-hidden";
 	var DICT = buildDict();
 	var LANG_KEY = resolveLangKey();
+	var UI = buildUiStrings(LANG_KEY);
 	var CUSTOM_WORDS = loadCustomWords(LANG_KEY);
-	if (CUSTOM_WORDS.ad) DICT.ad = CUSTOM_WORDS.ad;
-	if (CUSTOM_WORDS.addFriend) DICT.addFriend = CUSTOM_WORDS.addFriend;
-	if (CUSTOM_WORDS.follow) DICT.follow = CUSTOM_WORDS.follow;
-	if (CUSTOM_WORDS.join) DICT.join = CUSTOM_WORDS.join;
+	HIDE_CATEGORIES.forEach((key) => {
+		const custom = CUSTOM_WORDS[key];
+		if (custom) DICT[key] = custom;
+	});
 	var FLAGS = loadFlags();
-	registerToggleMenu(FLAGS);
-	registerCustomWordsMenu(LANG_KEY, {
+	registerToggleMenu(FLAGS, UI);
+	registerCustomWordsMenu(LANG_KEY, UI, {
 		ad: DICT.ad,
 		addFriend: DICT.addFriend,
 		follow: DICT.follow,
 		join: DICT.join
 	});
-	var uniq = (arr) => Array.from(new Set(arr.filter((v) => !!v)));
-	var ALL_AD_WORDS = FLAGS.ad ? Object.values(AD_WORDS_BY_LANG) : [];
-	var MOBILE_CTA_WORDS = uniq([
-		FLAGS.ad ? DICT.ad : void 0,
-		FLAGS.addFriend ? DICT.addFriend : void 0,
-		FLAGS.follow ? DICT.follow : void 0,
-		FLAGS.join ? DICT.join : void 0,
-		...ALL_AD_WORDS
-	]);
-	var DESKTOP_CTA_WORDS = uniq([
-		FLAGS.follow ? DICT.follow : void 0,
-		FLAGS.join ? DICT.join : void 0,
-		FLAGS.ad ? DICT.ad : void 0,
-		FLAGS.addFriend ? DICT.addFriend : void 0,
-		...ALL_AD_WORDS
-	]);
-	var maxCtaLen = (words) => Math.max(...words.map((w) => w.length)) + 2;
-	var MOBILE_CTA_MAX_LEN = maxCtaLen(MOBILE_CTA_WORDS);
-	var DESKTOP_CTA_MAX_LEN = maxCtaLen(DESKTOP_CTA_WORDS);
+	var log = FLAGS.showLog ? createHideLog(UI) : null;
+	var CATEGORY_LABELS = {
+		ad: UI.category.ad,
+		addFriend: UI.category.addFriend,
+		follow: UI.category.follow,
+		join: UI.category.join,
+		suggestedGroups: DICT.suggestedGroups,
+		createStory: DICT.createStory,
+		reels: DICT.reels,
+		feedStories: DICT.feedStories
+	};
+	var CTA_CATEGORY = new Map();
+	var addWord = (word, cat) => {
+		if (word) CTA_CATEGORY.set(word, cat);
+	};
+	if (FLAGS.addFriend) addWord(DICT.addFriend, "addFriend");
+	if (FLAGS.follow) addWord(DICT.follow, "follow");
+	if (FLAGS.join) addWord(DICT.join, "join");
+	if (FLAGS.ad) {
+		Object.values(AD_WORDS_BY_LANG).forEach((w) => addWord(w, "ad"));
+		addWord(DICT.ad, "ad");
+	}
+	var CTA_WORDS = [...CTA_CATEGORY.keys()];
+	var CTA_MAX_LEN = CTA_WORDS.length ? Math.max(...CTA_WORDS.map((w) => w.length)) + 2 : 0;
 	var NOISE = /[\s​‌‍‎‏⁠﻿+＋・]/g;
-	function isCtaLabel(text, words, maxLen) {
+	function matchCtaPrefix(text) {
 		const t = (text ?? "").replace(NOISE, "");
-		return t.length <= maxLen && words.some((w) => t.startsWith(w));
+		if (t.length > CTA_MAX_LEN) return null;
+		for (const w of CTA_WORDS) if (t.startsWith(w)) return CTA_CATEGORY.get(w) ?? null;
+		return null;
+	}
+	var MAX_WRAPPER_VIEWPORTS = 3;
+	var warned = new WeakSet();
+	function warnOnce(el, reason) {
+		if (warned.has(el)) return;
+		warned.add(el);
+		console.warn(`[feed-cleaner] ${reason}:`, el);
+	}
+	function isSafeWrapper(el) {
+		if (el.hasAttribute(HIDE_MARK)) return true;
+		return el.getBoundingClientRect().height <= window.innerHeight * MAX_WRAPPER_VIEWPORTS;
 	}
 	function isVscrollerChild(el) {
 		const p = el.parentElement;
 		return !!(p && p.getAttribute && p.getAttribute("data-type") === "vscroller");
 	}
+	var MAX_HOPS = 100;
 	function walkUpTo(el, isTarget) {
-		for (let cur = el; cur && cur !== document.body; cur = cur.parentElement) if (isTarget(cur)) return cur;
+		let hops = 0;
+		for (let cur = el; cur && cur !== document.body && hops < MAX_HOPS; cur = cur.parentElement, hops++) if (isTarget(cur)) return cur;
 		return null;
 	}
 	function hide(el, prop, value) {
@@ -356,41 +580,62 @@
 		el.removeAttribute(HIDE_MARK);
 	}
 	function scanMobile() {
-		const want = new Set();
-		const add = (el) => {
+		const want = new Map();
+		const add = (el, cat) => {
 			const wrapper = walkUpTo(el, isVscrollerChild);
-			if (wrapper) want.add(wrapper);
+			if (!wrapper) return;
+			if (!isSafeWrapper(wrapper)) {
+				warnOnce(wrapper, "skipped an oversized wrapper (possible over-match)");
+				return;
+			}
+			if (!want.has(wrapper)) want.set(wrapper, cat);
 		};
 		const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-		for (let node = walker.nextNode(); node; node = walker.nextNode()) if (isCtaLabel(node.nodeValue, MOBILE_CTA_WORDS, MOBILE_CTA_MAX_LEN) && node.parentElement) add(node.parentElement);
-		document.querySelectorAll(`h2[aria-label="${DICT.suggestedGroups}"], [aria-label="${DICT.createStory}"]`).forEach(add);
+		for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+			const cat = matchCtaPrefix(node.nodeValue);
+			if (cat && node.parentElement) add(node.parentElement, cat);
+		}
+		document.querySelectorAll(`h2[aria-label="${DICT.suggestedGroups}"]`).forEach((el) => add(el, "suggestedGroups"));
+		document.querySelectorAll(`[aria-label="${DICT.createStory}"]`).forEach((el) => add(el, "createStory"));
 		document.querySelectorAll(`[${HIDE_MARK}]`).forEach((wrapper) => {
 			if (!want.has(wrapper)) unhide(wrapper, "visibility");
 		});
-		want.forEach((wrapper) => hide(wrapper, "visibility", "hidden"));
+		want.forEach((cat, wrapper) => {
+			if (!wrapper.hasAttribute(HIDE_MARK)) log?.record(CATEGORY_LABELS[cat], wrapper);
+			hide(wrapper, "visibility", "hidden");
+		});
 	}
 	function hasPagelet(el) {
 		return !!(el.hasAttribute && el.hasAttribute("data-pagelet"));
 	}
 	function scanDesktop() {
-		const want = new Set();
-		const add = (el) => {
+		const want = new Map();
+		const add = (el, cat) => {
 			const wrapper = walkUpTo(el, hasPagelet);
-			if (wrapper) want.add(wrapper);
+			if (!wrapper) return;
+			if (!isSafeWrapper(wrapper)) {
+				warnOnce(wrapper, "skipped an oversized wrapper (possible over-match)");
+				return;
+			}
+			if (!want.has(wrapper)) want.set(wrapper, cat);
 		};
 		const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
 		for (let node = walker.nextNode(); node; node = walker.nextNode()) {
 			const t = (node.nodeValue ?? "").replace(NOISE, "");
-			if (t.length <= DESKTOP_CTA_MAX_LEN && DESKTOP_CTA_WORDS.includes(t) && node.parentElement) add(node.parentElement);
+			const cat = CTA_CATEGORY.get(t);
+			if (cat && node.parentElement) add(node.parentElement, cat);
 		}
 		document.querySelectorAll("h3").forEach((h3) => {
-			if ((h3.textContent ?? "").trim() === DICT.reels) add(h3);
+			if ((h3.textContent ?? "").trim() === DICT.reels) add(h3, "reels");
 		});
-		document.querySelectorAll(`div[aria-label="${DICT.feedStories}"]`).forEach(add);
+		document.querySelectorAll(`div[aria-label="${DICT.feedStories}"]`).forEach((el) => add(el, "feedStories"));
 		document.querySelectorAll(`[${HIDE_MARK}]`).forEach((wrapper) => {
 			if (!want.has(wrapper)) unhide(wrapper, "display");
 		});
-		want.forEach((wrapper) => hide(wrapper, "display", "none"));
+		want.forEach((cat, wrapper) => {
+			if (!wrapper.hasAttribute(HIDE_MARK)) log?.record(CATEGORY_LABELS[cat], wrapper);
+			hide(wrapper, "display", "none");
+		});
 	}
 	var scan = location.hostname === "m.facebook.com" ? scanMobile : scanDesktop;
 	var scheduled = false;

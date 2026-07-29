@@ -1,74 +1,124 @@
 import { buildDict, AD_WORDS_BY_LANG, resolveLangKey } from './i18n';
-import { loadFlags, registerToggleMenu, loadCustomWords, registerCustomWordsMenu } from './settings';
+import type { Dict } from './i18n';
+import { loadFlags, registerToggleMenu, loadCustomWords, registerCustomWordsMenu, HIDE_CATEGORIES } from './settings';
+import { buildUiStrings } from './ui-i18n';
+import { createHideLog } from './hidelog';
+import type { HideLog } from './hidelog';
 
 const HIDE_MARK = 'data-cleansns-hidden';
 
 const DICT = buildDict();
 const LANG_KEY = resolveLangKey();
+const UI = buildUiStrings(LANG_KEY);
+
 // User-supplied overrides (see settings.ts) win over both the built-in dict
 // and the bulk-sourced AD_WORDS_BY_LANG fallback — someone who bothered to
 // type in their own language's word knows it better than either of those.
 const CUSTOM_WORDS = loadCustomWords(LANG_KEY);
-if (CUSTOM_WORDS.ad) DICT.ad = CUSTOM_WORDS.ad;
-if (CUSTOM_WORDS.addFriend) DICT.addFriend = CUSTOM_WORDS.addFriend;
-if (CUSTOM_WORDS.follow) DICT.follow = CUSTOM_WORDS.follow;
-if (CUSTOM_WORDS.join) DICT.join = CUSTOM_WORDS.join;
+HIDE_CATEGORIES.forEach((key) => {
+  const custom = CUSTOM_WORDS[key];
+  if (custom) DICT[key] = custom;
+});
 
 const FLAGS = loadFlags();
-registerToggleMenu(FLAGS);
-registerCustomWordsMenu(LANG_KEY, {
+registerToggleMenu(FLAGS, UI);
+registerCustomWordsMenu(LANG_KEY, UI, {
   ad: DICT.ad,
   addFriend: DICT.addFriend,
   follow: DICT.follow,
   join: DICT.join,
 });
 
-const uniq = (arr: (string | undefined)[]): string[] =>
-  Array.from(new Set(arr.filter((v): v is string => !!v)));
-// Every known "Sponsored"/"Ad" word across ~60 languages is merged into both
-// mobile and desktop matching unconditionally (not just the detected language's)
-// — a post's text legitimately starting with e.g. the Finnish word for
-// "Sponsored" on a Japanese-language feed is effectively impossible, so this
-// only adds coverage, including against html-lang mismatches, with no
-// realistic over-matching risk. It's still gated by FLAGS.ad, same as DICT.ad.
-const ALL_AD_WORDS = FLAGS.ad ? Object.values(AD_WORDS_BY_LANG) : [];
-const MOBILE_CTA_WORDS = uniq([
-  FLAGS.ad ? DICT.ad : undefined,
-  FLAGS.addFriend ? DICT.addFriend : undefined,
-  FLAGS.follow ? DICT.follow : undefined,
-  FLAGS.join ? DICT.join : undefined,
-  ...ALL_AD_WORDS,
-]);
-// Desktop ad/add-friend hiding is unverified against the current DOM (see
-// README) — it reuses the same generic "short exact-match text node inside a
-// data-pagelet wrapper" technique already proven for Follow/Join, on the
-// assumption those labels are still their own standalone text nodes like
-// Follow/Join are.
-const DESKTOP_CTA_WORDS = uniq([
-  FLAGS.follow ? DICT.follow : undefined,
-  FLAGS.join ? DICT.join : undefined,
-  FLAGS.ad ? DICT.ad : undefined,
-  FLAGS.addFriend ? DICT.addFriend : undefined,
-  ...ALL_AD_WORDS,
-]);
+const log: HideLog | null = FLAGS.showLog ? createHideLog(UI) : null;
+
+type Category = keyof Dict;
+
+const CATEGORY_LABELS: Record<Category, string> = {
+  ad: UI.category.ad,
+  addFriend: UI.category.addFriend,
+  follow: UI.category.follow,
+  join: UI.category.join,
+  suggestedGroups: DICT.suggestedGroups,
+  createStory: DICT.createStory,
+  reels: DICT.reels,
+  feedStories: DICT.feedStories,
+};
+
+// Word -> category lookup, so a match can be labeled (for the hide log) and
+// not just detected. Serves mobile and desktop matching alike — both look
+// for the same four CTA categories, so one shared map replaces what used to
+// be two separately-built (but identical) word lists.
+//
+// For an exact word collision across categories, Map.set means whichever
+// call happens LAST wins (no such collision exists in current data, so this
+// is purely a "know the rule before you rely on it" note, not a live
+// concern). Insertion order matters for a different reason: it's also the
+// scan order matchCtaPrefix() below walks to find which word a given text
+// node starts with, so putting the four CTA categories before the ~60-word
+// ad-word bulk list makes a specific category win over 'ad' on any
+// prefix-overlap between them.
+const CTA_CATEGORY = new Map<string, Category>();
+const addWord = (word: string | undefined, cat: Category): void => {
+  if (word) CTA_CATEGORY.set(word, cat);
+};
+if (FLAGS.addFriend) addWord(DICT.addFriend, 'addFriend');
+if (FLAGS.follow) addWord(DICT.follow, 'follow');
+if (FLAGS.join) addWord(DICT.join, 'join');
+// Every known "Sponsored"/"Ad" word across ~60 languages is merged in
+// unconditionally (not just the detected language's) — a post's text
+// legitimately starting with e.g. the Finnish word for "Sponsored" on a
+// Japanese-language feed is effectively impossible, so this only adds
+// coverage, including against html-lang mismatches, with no realistic
+// over-matching risk.
+if (FLAGS.ad) {
+  Object.values(AD_WORDS_BY_LANG).forEach((w) => addWord(w, 'ad'));
+  addWord(DICT.ad, 'ad');
+}
+
+const CTA_WORDS = [...CTA_CATEGORY.keys()];
 
 // The length cap exists to stop a CTA word from matching as the mere prefix of an
 // unrelated sentence (e.g. a post starting with "Follow the money..."), not to
 // bound CTA labels themselves — those vary a lot by language (observed as short
 // as 2 chars for ja "広告" and as long as 27 for pt-PT "Adicionar à lista de
 // amigos"), so the cap must scale with the longest configured word rather than be
-// a fixed constant.
-const maxCtaLen = (words: string[]): number => Math.max(...words.map((w) => w.length)) + 2;
-const MOBILE_CTA_MAX_LEN = maxCtaLen(MOBILE_CTA_WORDS);
-const DESKTOP_CTA_MAX_LEN = maxCtaLen(DESKTOP_CTA_WORDS);
+// a fixed constant. Only mobile matching (prefix search over free-form text
+// nodes) needs this; desktop does an exact-string Map lookup below, which
+// doesn't have a false-positive-on-long-text failure mode to guard against.
+const CTA_MAX_LEN = CTA_WORDS.length ? Math.max(...CTA_WORDS.map((w) => w.length)) + 2 : 0;
 
 // Strip whitespace, zero-width/bidi marks, and leading icon glyphs (+/＋/・) that
 // Facebook sometimes prepends to CTA labels, so the anchor match doesn't miss them.
 const NOISE = /[\s​‌‍‎‏⁠﻿+＋・]/g;
 
-function isCtaLabel(text: string | null, words: string[], maxLen: number): boolean {
+function matchCtaPrefix(text: string | null): Category | null {
   const t = (text ?? '').replace(NOISE, '');
-  return t.length <= maxLen && words.some((w) => t.startsWith(w));
+  if (t.length > CTA_MAX_LEN) return null;
+  for (const w of CTA_WORDS) {
+    if (t.startsWith(w)) return CTA_CATEGORY.get(w) ?? null;
+  }
+  return null;
+}
+
+// A single post — even a long one with images — fits comfortably within a
+// few screens' worth of height. Anything larger is almost certainly not a
+// single post but some much bigger container (e.g. the whole feed), which a
+// looser-than-intended CTA match could otherwise cause us to hide entirely.
+const MAX_WRAPPER_VIEWPORTS = 3;
+const warned = new WeakSet<Element>();
+
+function warnOnce(el: Element, reason: string): void {
+  if (warned.has(el)) return;
+  warned.add(el);
+  console.warn(`[feed-cleaner] ${reason}:`, el);
+}
+
+function isSafeWrapper(el: HTMLElement): boolean {
+  // Already hidden -> already passed this check the first time it was
+  // hidden, and re-measuring on every scan is wasted work (a forced reflow)
+  // for a result that can't change without an unhide first.
+  if (el.hasAttribute(HIDE_MARK)) return true;
+  return el.getBoundingClientRect().height <= window.innerHeight * MAX_WRAPPER_VIEWPORTS;
 }
 
 // --- m.facebook.com: top-level post wrappers are direct children of [data-type="vscroller"] ---
@@ -77,8 +127,19 @@ function isVscrollerChild(el: Element): boolean {
   return !!(p && p.getAttribute && p.getAttribute('data-type') === 'vscroller');
 }
 
+// The walk already terminates safely on its own once it reaches document.body
+// (guaranteed finite for any real DOM), so this hop cap isn't load-bearing for
+// correctness — it's defense-in-depth against some future change removing
+// that terminator by accident. Set high enough (unlike debug.ts's 25, which
+// was measured against mobile's isVscrollerChild specifically) that it should
+// never fire on a legitimate match even on desktop's deeper data-pagelet
+// nesting; if it ever does, treat that as a real bug report, not tune this
+// number up further.
+const MAX_HOPS = 100;
+
 function walkUpTo(el: Element, isTarget: (el: Element) => boolean): Element | null {
-  for (let cur: Element | null = el; cur && cur !== document.body; cur = cur.parentElement) {
+  let hops = 0;
+  for (let cur: Element | null = el; cur && cur !== document.body && hops < MAX_HOPS; cur = cur.parentElement, hops++) {
     if (isTarget(cur)) return cur;
   }
   return null;
@@ -98,6 +159,13 @@ function unhide(el: HTMLElement, prop: string): void {
   el.removeAttribute(HIDE_MARK);
 }
 
+// "Newly hidden, so log it" is decided by HIDE_MARK's absence, reusing the
+// same attribute hide()/unhide() already maintain rather than tracking a
+// second parallel set of "already logged" elements. Known edge case: if
+// Facebook ever remounts a wrapper we'd already hidden (losing its
+// attributes) mid-session, it gets logged again as if newly hidden — a
+// cosmetic over-count in the log, not a change in what's actually hidden.
+
 // Recompute the full set of wrappers that should be hidden from scratch each pass,
 // then diff against the currently-hidden set. Re-validating a hide with a WEAKER
 // rule than the one that produced it (e.g. checking the whole wrapper's text
@@ -105,25 +173,37 @@ function unhide(el: HTMLElement, prop: string): void {
 // any CTA whose label isn't the first text in the wrapper (e.g. a "Follow" CTA
 // appearing after the author name in a normal post's byline).
 function scanMobile(): void {
-  const want = new Set<HTMLElement>();
-  const add = (el: Element) => {
-    const wrapper = walkUpTo(el, isVscrollerChild);
-    if (wrapper) want.add(wrapper as HTMLElement);
+  const want = new Map<HTMLElement, Category>();
+  const add = (el: Element, cat: Category) => {
+    const wrapper = walkUpTo(el, isVscrollerChild) as HTMLElement | null;
+    // Not finding a wrapper here is routine, not a warning sign — CTA-word
+    // text legitimately appears outside the feed too (nav, our own settings
+    // dialog, profile hover cards, ...), so it's silently skipped rather
+    // than logged.
+    if (!wrapper) return;
+    if (!isSafeWrapper(wrapper)) {
+      warnOnce(wrapper, 'skipped an oversized wrapper (possible over-match)');
+      return;
+    }
+    if (!want.has(wrapper)) want.set(wrapper, cat);
   };
 
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (isCtaLabel(node.nodeValue, MOBILE_CTA_WORDS, MOBILE_CTA_MAX_LEN) && node.parentElement) add(node.parentElement);
+    const cat = matchCtaPrefix(node.nodeValue);
+    if (cat && node.parentElement) add(node.parentElement, cat);
   }
 
-  document
-    .querySelectorAll(`h2[aria-label="${DICT.suggestedGroups}"], [aria-label="${DICT.createStory}"]`)
-    .forEach(add);
+  document.querySelectorAll(`h2[aria-label="${DICT.suggestedGroups}"]`).forEach((el) => add(el, 'suggestedGroups'));
+  document.querySelectorAll(`[aria-label="${DICT.createStory}"]`).forEach((el) => add(el, 'createStory'));
 
   document.querySelectorAll<HTMLElement>(`[${HIDE_MARK}]`).forEach((wrapper) => {
     if (!want.has(wrapper)) unhide(wrapper, 'visibility');
   });
-  want.forEach((wrapper) => hide(wrapper, 'visibility', 'hidden'));
+  want.forEach((cat, wrapper) => {
+    if (!wrapper.hasAttribute(HIDE_MARK)) log?.record(CATEGORY_LABELS[cat], wrapper);
+    hide(wrapper, 'visibility', 'hidden');
+  });
 }
 
 // --- www.facebook.com: top-level post wrappers carry data-pagelet ---
@@ -131,28 +211,44 @@ function hasPagelet(el: Element): boolean {
   return !!(el.hasAttribute && el.hasAttribute('data-pagelet'));
 }
 
+// Desktop ad/add-friend hiding is unverified against the current DOM (see
+// README) — it reuses the same generic "short exact-match text node inside a
+// data-pagelet wrapper" technique already proven for Follow/Join, on the
+// assumption those labels are still their own standalone text nodes like
+// Follow/Join are.
 function scanDesktop(): void {
-  const want = new Set<HTMLElement>();
-  const add = (el: Element) => {
-    const wrapper = walkUpTo(el, hasPagelet);
-    if (wrapper) want.add(wrapper as HTMLElement);
+  const want = new Map<HTMLElement, Category>();
+  const add = (el: Element, cat: Category) => {
+    const wrapper = walkUpTo(el, hasPagelet) as HTMLElement | null;
+    // Not finding a wrapper here is routine, not a warning sign — see the
+    // matching comment in scanMobile.
+    if (!wrapper) return;
+    if (!isSafeWrapper(wrapper)) {
+      warnOnce(wrapper, 'skipped an oversized wrapper (possible over-match)');
+      return;
+    }
+    if (!want.has(wrapper)) want.set(wrapper, cat);
   };
 
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     const t = (node.nodeValue ?? '').replace(NOISE, '');
-    if (t.length <= DESKTOP_CTA_MAX_LEN && DESKTOP_CTA_WORDS.includes(t) && node.parentElement) add(node.parentElement);
+    const cat = CTA_CATEGORY.get(t);
+    if (cat && node.parentElement) add(node.parentElement, cat);
   }
 
   document.querySelectorAll('h3').forEach((h3) => {
-    if ((h3.textContent ?? '').trim() === DICT.reels) add(h3);
+    if ((h3.textContent ?? '').trim() === DICT.reels) add(h3, 'reels');
   });
-  document.querySelectorAll(`div[aria-label="${DICT.feedStories}"]`).forEach(add);
+  document.querySelectorAll(`div[aria-label="${DICT.feedStories}"]`).forEach((el) => add(el, 'feedStories'));
 
   document.querySelectorAll<HTMLElement>(`[${HIDE_MARK}]`).forEach((wrapper) => {
     if (!want.has(wrapper)) unhide(wrapper, 'display');
   });
-  want.forEach((wrapper) => hide(wrapper, 'display', 'none'));
+  want.forEach((cat, wrapper) => {
+    if (!wrapper.hasAttribute(HIDE_MARK)) log?.record(CATEGORY_LABELS[cat], wrapper);
+    hide(wrapper, 'display', 'none');
+  });
 }
 
 const scan = location.hostname === 'm.facebook.com' ? scanMobile : scanDesktop;
