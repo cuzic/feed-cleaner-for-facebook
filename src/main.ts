@@ -123,6 +123,22 @@ function isSafeWrapper(el: HTMLElement): boolean {
   return el.getBoundingClientRect().height <= window.innerHeight * MAX_WRAPPER_VIEWPORTS;
 }
 
+// Facebook's mobile feed is virtualized: it inserts a post's DOM well before
+// it's scrolled into view (prefetching, to avoid blank flashes on fast
+// scroll). Our MutationObserver reacts to that insertion immediately, so a
+// fade animation started right then finishes long before the post is ever
+// scrolled into view — the user never sees it happen, just blank space once
+// they get there. One viewport of margin above/below the visible area is
+// "close enough that fading it is worth animating"; anything farther gets
+// hidden instantly instead of wasting an invisible animation on it.
+const VIEWPORT_FADE_MARGIN = 1;
+
+function isNearViewport(el: HTMLElement): boolean {
+  const r = el.getBoundingClientRect();
+  const margin = window.innerHeight * VIEWPORT_FADE_MARGIN;
+  return r.bottom > -margin && r.top < window.innerHeight + margin;
+}
+
 // --- m.facebook.com: top-level post wrappers are direct children of [data-type="vscroller"] ---
 function isVscrollerChild(el: Element): boolean {
   const p = el.parentElement;
@@ -171,12 +187,18 @@ const FADE_STARTED_MARK = 'data-cleansns-fading';
 // elements already mid-fade too. It has to be a synchronous marker set
 // before the rAFs fire — checking opacity would race, since a second scan
 // could land in the gap before the first rAF pair ever sets it.
+//
+// Also requires isNearViewport(el): a post detected far off-screen (see its
+// comment) would otherwise fade out long before it's ever scrolled into
+// view, which looks identical to no animation at all — so it's hidden
+// instantly instead, and only posts close enough to actually be watched get
+// the animation.
 function hide(el: HTMLElement, prop: string, value: string, animate: boolean): void {
   if (el.style.getPropertyValue(prop) === value) {
     el.setAttribute(HIDE_MARK, '1');
     return;
   }
-  if (animate) {
+  if (animate && isNearViewport(el)) {
     if (!el.hasAttribute(FADE_STARTED_MARK)) {
       el.setAttribute(FADE_STARTED_MARK, '1');
       el.style.setProperty('transition', `opacity ${FADE_MS}ms ease-out`, 'important');
