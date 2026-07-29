@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Feed Cleaner for Facebook
 // @namespace    https://github.com/cuzic/feed-cleaner-for-facebook
-// @version      2.2.0
+// @version      2.2.1
 // @author       cuzic
-// @description  Unofficial, not affiliated with or endorsed by Meta/Facebook. Hides suggested/ad posts (Ad/Add friend/Follow/Join CTAs), the suggested-groups carousel, the stories bar (mobile), and the Follow/Join/Reels/Stories units (desktop) on Facebook. Works in any Facebook UI language, with the toggle menu and settings dialog themselves localized (ja/en/es/fr/pt/de/ko). Optional hidden-posts log (with a smooth fade-out, a badge pop, and milestone celebrations, each independently toggleable) shows what was hidden. See README to add or fix a language.
+// @description  Unofficial, not affiliated with or endorsed by Meta/Facebook. Built for the niche most similar scripts miss: works on m.facebook.com (mobile) in ANY Facebook UI language (7 fully verified incl. its own menu/dialog text, 57 more with ad-label coverage), actively maintained, and runs in any userscript manager (verified in Violentmonkey on Microsoft Edge for Android, since Chrome for Android doesn't support extensions at all). Hides suggested/ad posts (Ad/Add friend/Follow/Join CTAs), the suggested-groups carousel, the stories bar (mobile), and the Follow/Join/Reels/Stories units (desktop). Each CTA category, and a hidden-posts log with a fade-out/badge-pop/milestone-celebration polish, is independently toggleable from the menu. Don't see your language? Fix it yourself from that same menu, on the spot, no code needed. See README for details and full language list.
 // @license      MIT
 // @supportURL   https://github.com/cuzic/feed-cleaner-for-facebook/issues
 // @downloadURL  https://raw.githubusercontent.com/cuzic/feed-cleaner-for-facebook/main/dist/facebook-feed-cleaner.user.js

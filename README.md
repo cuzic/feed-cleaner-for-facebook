@@ -5,6 +5,34 @@ Facebook feed: sponsored/ad posts, "Add Friend"/"Follow"/"Join" suggestion
 posts (all on both mobile and desktop), the suggested-groups carousel, Reels,
 and the Stories bar/tray.
 
+**The niche this specifically targets: `m.facebook.com` (mobile) + any
+Facebook UI language, kept actively maintained.** Most similar scripts cover
+only one of those. Desktop-only tools like
+[F.B. Purity](https://www.fbpurity.com/install.htm) explicitly don't run on
+mobile Chrome at all. Of the ones that do reach mobile,
+[FB Mobile - Clean my feeds](https://greasyfork.org/en/scripts/479868-fb-mobile-clean-my-feeds)
+is genuinely multi-language — but its author has declared the userscript
+version **end-of-life**, citing "bloat, compatibility issues with Userscript
+managers, and their instability on Mobile browsers," and now maintains a
+[dedicated browser extension](https://github.com/webdevsk/fb-mobile-clean-my-feeds-ext)
+instead, which only targets a short list of niche extension-capable mobile
+browsers (Quetta, Mises, Lemur, Firefox-based). That project also detects
+language from `navigator.languages` (the browser's own language setting) —
+but Facebook ignores the browser's language entirely once you're logged in
+and goes by the account's own "Language and Region" setting instead (this
+script reads that directly, via `<html lang>`; see
+[below](#works-in-any-facebook-ui-language)), so browser-language detection
+can silently pick the wrong dictionary for anyone whose Facebook language
+differs from their browser's.
+
+This script runs as a plain userscript in whatever manager you already use
+— we've specifically verified it in Violentmonkey on **Microsoft Edge for
+Android**, a mainstream browser (Chrome for Android doesn't support
+extensions at all, which is why "just use Tampermonkey" doesn't work for
+most Android users). If a language still isn't covered well, you can fix it
+yourself from the toggle menu, on the spot, with no code, no rebuild, and no
+waiting for an update — see [below](#works-in-any-facebook-ui-language).
+
 Each of the four CTA categories (Ad / Add friend / Follow / Join) can be
 turned on or off independently from your userscript manager's menu (e.g.
 right-click the Tampermonkey icon → the script's menu items). Toggling
@@ -63,21 +91,48 @@ Useful when a post isn't being hidden and you want to see what it's matching.
 
 Facebook's CTA text ("Sponsored", "Follow", "参加する", …) is
 UI-language-dependent, so matching is driven by a small per-language
-dictionary (`src/i18n.ts`) keyed by `<html lang>` / `navigator.language`,
-with English as a fallback for anything the current language's dictionary is
-missing.
+dictionary (`src/i18n.ts`) keyed by `<html lang>` — Facebook's own effective
+UI language, which (unlike `navigator.language`, the browser's setting) it
+keeps honoring even after you're logged in — with English as a fallback for
+anything the current language's dictionary is missing.
 
-`ja`/`en`/`es`/`fr`/`pt`/`de`/`ko` were checked live (Facebook's own
-"Language and Region" account setting switched per language, on Chrome for
-Android against `m.facebook.com` — not the browser's language, which Facebook
-mostly ignores once you're logged in). That live testing only covered
-`m.facebook.com` (mobile); ad/add-friend-hiding on `www.facebook.com`
-(desktop) reuses the same matching technique but is unverified against the
-current desktop DOM — if it stops working after a Facebook redesign, that's
-the first thing to check (see [Development](#development) for how to test a
-change locally). Beyond those, `src/i18n.ts` also
-exports `AD_WORDS_BY_LANG`, an `ad`("Sponsored"/"Ad" label)-only word list
-covering ~60 more languages, cross-referenced from the
+**Language coverage, by tier:**
+
+| Tier | Coverage | Languages |
+|---|---|---|
+| Fully verified | Every category (Ad/Add friend/Follow/Join/suggested-groups/Reels/Stories/…), **and** this script's own menu and dialog text | Japanese (`ja`), English (`en`), Spanish (`es`), French (`fr`), Portuguese (`pt`), German (`de`), Korean (`ko`) — 7 |
+| Cross-checked | Every category; this script's own UI falls back to English | Chinese Simplified (`zh-hans`), Chinese Traditional (`zh-hant`) — 2 |
+| Ad-label only | Just the "Sponsored"/"Ad" label; everything else (Follow/Join/Add friend/…) and this script's own UI fall back to English | 57 more — see below |
+
+<details>
+<summary>The 57 ad-label-only languages (click to expand)</summary>
+
+Afrikaans, Amharic, Arabic, Assamese, Aymara, Azerbaijani, Basque, Belarusian,
+Bengali, Bosnian, Breton, Bulgarian, Catalan, Corsican, Czech, Danish, Dutch,
+Esperanto, Estonian, Faroese, Finnish, Galician, Greek, Guarani, Hindi,
+Hungarian, Indonesian, Irish, Italian, Javanese, Kazakh, Khmer, Lao,
+Macedonian, Malay, Malayalam, Marathi, Mongolian, Nepali, Odia, Pashto,
+Persian, Polish, Punjabi, Russian, Sinhala, Somali, Swedish, Tagalog, Telugu,
+Thai, Turkish, Ukrainian, Urdu, Vietnamese, Welsh, Western Frisian
+
+</details>
+
+A wrong or missing entry always just means nothing gets hidden in that
+language (a safe failure), never that the wrong thing gets hidden — see
+further down this section for the fastest way to fix your own language
+yourself on the spot, or to contribute the fix back so it moves up a tier
+for everyone.
+
+The "fully verified" tier was checked live (Facebook's own "Language and
+Region" account setting switched per language, on Chrome for Android against
+`m.facebook.com`). That live testing only covered `m.facebook.com` (mobile);
+ad/add-friend-hiding on `www.facebook.com` (desktop) reuses the same matching
+technique but is unverified against the current desktop DOM — if it stops
+working after a Facebook redesign, that's the first thing to check (see
+[Development](#development) for how to test a change locally).
+
+The 57-language "ad-label only" tier comes from `src/i18n.ts`'s
+`AD_WORDS_BY_LANG`, cross-referenced from the
 ["Facebook Unsponsored"](https://greasyfork.org/en/scripts/371822-facebook-unsponsored)
 userscript (source at [nmtrung/greasemonkey-scripts](https://github.com/nmtrung/greasemonkey-scripts)) —
 those entries are Facebook's own UI microcopy as that project observed it,
@@ -87,15 +142,11 @@ above `AD_WORDS_BY_LANG` for the full reasoning. It's collected from
 Facebook's older desktop UI, so treat it as a good starting point rather than
 verified truth — cross-checks against the current mobile UI landed exactly
 right for `ja`/`zh-hans`/`zh-hant` but wrong for `en` ("Sponsored" there vs.
-"Ad" on mobile today). Every one of those ~60 languages' ad-words is merged
-in unconditionally at runtime (not just the detected language's), since a
-post legitimately starting with, say, the Finnish word for "Sponsored" on a
-Japanese feed is effectively impossible — so this only adds coverage, with
-no realistic false-positive risk. Everything else (`addFriend`, `follow`,
-`join`, `suggestedGroups`, `createStory`, `reels`, `feedStories` for
-languages without a full `I18N` entry) is a best-effort guess or falls back
-to English. A wrong or missing entry just means nothing gets hidden in that
-language (a safe failure), never that the wrong thing gets hidden.
+"Ad" on mobile today). Every one of those 57 languages' ad-words is merged in
+unconditionally at runtime (not just the detected language's), since a post
+legitimately starting with, say, the Finnish word for "Sponsored" on a
+Japanese feed is effectively impossible — so this only adds coverage, with no
+realistic false-positive risk.
 
 **Just want it working in your own language, right now?** Set your Facebook
 account's display language (Settings → Language and Region — not just your
