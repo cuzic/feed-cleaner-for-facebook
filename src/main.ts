@@ -123,22 +123,6 @@ function isSafeWrapper(el: HTMLElement): boolean {
   return el.getBoundingClientRect().height <= window.innerHeight * MAX_WRAPPER_VIEWPORTS;
 }
 
-// Facebook's mobile feed is virtualized: it inserts a post's DOM well before
-// it's scrolled into view (prefetching, to avoid blank flashes on fast
-// scroll). Our MutationObserver reacts to that insertion immediately, so a
-// fade animation started right then finishes long before the post is ever
-// scrolled into view — the user never sees it happen, just blank space once
-// they get there. One viewport of margin above/below the visible area is
-// "close enough that fading it is worth animating"; anything farther gets
-// hidden instantly instead of wasting an invisible animation on it.
-const VIEWPORT_FADE_MARGIN = 1;
-
-function isNearViewport(el: HTMLElement): boolean {
-  const r = el.getBoundingClientRect();
-  const margin = window.innerHeight * VIEWPORT_FADE_MARGIN;
-  return r.bottom > -margin && r.top < window.innerHeight + margin;
-}
-
 // --- m.facebook.com: top-level post wrappers are direct children of [data-type="vscroller"] ---
 function isVscrollerChild(el: Element): boolean {
   const p = el.parentElement;
@@ -166,49 +150,66 @@ function walkUpTo(el: Element, isTarget: (el: Element) => boolean): Element | nu
 const FADE_MS = 250;
 const FADE_STARTED_MARK = 'data-cleansns-fading';
 
-// Without animation, `prop`/`value` (visibility:hidden or display:none) is
-// applied immediately, same as before. With it, opacity fades out first —
-// with pointer-events disabled right away so the fading post isn't still
-// clickable — and `prop`/`value` only lands once the fade finishes, so the
-// element doesn't jump to its final state mid-transition.
-//
+// Facebook's mobile feed is virtualized: it inserts a post's DOM well before
+// it's scrolled into view (prefetching, to avoid blank flashes on fast
+// scroll). Our MutationObserver reacts to that insertion immediately, so
+// starting the fade right then finishes it long before the post is ever
+// scrolled into view — nothing to see, just blank space once the user gets
+// there. So instead of fading immediately, a wrapper that should fade is
+// registered with this observer and only actually starts fading once it
+// reports the wrapper as intersecting the viewport — i.e. the moment it
+// would otherwise have appeared on screen. Elements already on screen when
+// observed fire an intersecting callback immediately (standard
+// IntersectionObserver behavior), so this also covers the "already visible
+// when detected" case without special-casing it.
+const fadePending = new Map<HTMLElement, { prop: string; value: string }>();
+const fadeObserver = new IntersectionObserver((entries) => {
+  for (const entry of entries) {
+    if (!entry.isIntersecting) continue;
+    const el = entry.target as HTMLElement;
+    fadeObserver.unobserve(el);
+    const pending = fadePending.get(el);
+    fadePending.delete(el);
+    if (pending) startFade(el, pending.prop, pending.value);
+  }
+});
+
 // The opacity change is deferred by two rAFs rather than set in the same
-// tick as `transition`. Reason: this runs the moment a post is detected,
-// which for infinite-scroll content is often the same task that inserted it
-// into the DOM — i.e. before the browser has ever painted it at its natural
-// opacity. Setting `transition` and `opacity:0` together in that case gives
-// the browser nothing to visibly animate from, so it just appears already
-// gone (looks identical to no animation at all). Two rAFs guarantee a real
-// paint at the starting opacity before the transition's target value lands
-// (one rAF is sometimes still the same paint the mutation itself lands in).
-//
-// `FADE_STARTED_MARK` (rather than HIDE_MARK, or opacity itself) gates
-// whether a fade gets (re-)started, because this runs on every scan for
-// elements already mid-fade too. It has to be a synchronous marker set
-// before the rAFs fire — checking opacity would race, since a second scan
-// could land in the gap before the first rAF pair ever sets it.
-//
-// Also requires isNearViewport(el): a post detected far off-screen (see its
-// comment) would otherwise fade out long before it's ever scrolled into
-// view, which looks identical to no animation at all — so it's hidden
-// instantly instead, and only posts close enough to actually be watched get
-// the animation.
+// tick as `transition`. Reason: even once a wrapper is confirmed on-screen,
+// it may still be the very task that inserted or revealed it — i.e. before
+// the browser has ever painted it at its natural opacity. Setting
+// `transition` and `opacity:0` together in that case gives the browser
+// nothing to visibly animate from, so it just appears already gone (looks
+// identical to no animation at all). Two rAFs guarantee a real paint at the
+// starting opacity before the transition's target value lands (one rAF is
+// sometimes still the same paint the triggering change lands in).
+function startFade(el: HTMLElement, prop: string, value: string): void {
+  if (el.hasAttribute(FADE_STARTED_MARK)) return;
+  el.setAttribute(FADE_STARTED_MARK, '1');
+  el.style.setProperty('transition', `opacity ${FADE_MS}ms ease-out`, 'important');
+  el.style.setProperty('pointer-events', 'none', 'important');
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      el.style.setProperty('opacity', '0', 'important');
+    });
+  });
+  window.setTimeout(() => el.style.setProperty(prop, value, 'important'), FADE_MS + 60);
+}
+
+// Without animation, `prop`/`value` (visibility:hidden or display:none) is
+// applied immediately, same as before. HIDE_MARK is set either way — even
+// while a wrapper is only pending (not yet visually changed at all) — since
+// it reflects the *decision* to hide it, which is what scanMobile/
+// scanDesktop's re-scan diffing and the hide log both key off of.
 function hide(el: HTMLElement, prop: string, value: string, animate: boolean): void {
   if (el.style.getPropertyValue(prop) === value) {
     el.setAttribute(HIDE_MARK, '1');
     return;
   }
-  if (animate && isNearViewport(el)) {
-    if (!el.hasAttribute(FADE_STARTED_MARK)) {
-      el.setAttribute(FADE_STARTED_MARK, '1');
-      el.style.setProperty('transition', `opacity ${FADE_MS}ms ease-out`, 'important');
-      el.style.setProperty('pointer-events', 'none', 'important');
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          el.style.setProperty('opacity', '0', 'important');
-        });
-      });
-      window.setTimeout(() => el.style.setProperty(prop, value, 'important'), FADE_MS + 60);
+  if (animate) {
+    if (!el.hasAttribute(FADE_STARTED_MARK) && !fadePending.has(el)) {
+      fadePending.set(el, { prop, value });
+      fadeObserver.observe(el);
     }
   } else {
     el.style.setProperty(prop, value, 'important');
@@ -218,6 +219,13 @@ function hide(el: HTMLElement, prop: string, value: string, animate: boolean): v
 }
 
 function unhide(el: HTMLElement, prop: string): void {
+  // A wrapper can be unhidden while still only pending (registered with
+  // fadeObserver, never actually styled) — e.g. Facebook removed it from the
+  // DOM's matched set before it ever scrolled into view. Cancel that
+  // registration too, or a later intersection would fade an element nothing
+  // marked for hiding anymore.
+  fadeObserver.unobserve(el);
+  fadePending.delete(el);
   el.style.removeProperty(prop);
   el.style.removeProperty('opacity');
   el.style.removeProperty('transition');
