@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Feed Cleaner for Facebook
 // @namespace    https://github.com/cuzic/feed-cleaner-for-facebook
-// @version      2.2.4
+// @version      2.2.5
 // @author       cuzic
 // @description  Unofficial, not affiliated with or endorsed by Meta/Facebook. Built for the niche most similar scripts miss: works on m.facebook.com (mobile) in ANY Facebook UI language (7 fully verified incl. its own menu/dialog text, 57 more with ad-label coverage), actively maintained, and runs in any userscript manager (verified in Violentmonkey on Microsoft Edge for Android, since Chrome for Android doesn't support extensions at all). Hides suggested/ad posts (Ad/Add friend/Follow/Join CTAs), the suggested-groups carousel, the stories bar (mobile), and the Follow/Join/Reels/Stories units (desktop). Each CTA category, and a hidden-posts log with a fade-out/badge-pop/milestone-celebration polish, is independently toggleable from the menu. Don't see your language? Fix it yourself from that same menu, on the spot, no code needed. See README for details and full language list.
 // @license      MIT
@@ -633,7 +633,7 @@
 		for (let cur = el; cur && cur !== document.body && hops < MAX_HOPS; cur = cur.parentElement, hops++) if (isTarget(cur)) return cur;
 		return null;
 	}
-	var FADE_MS = 250;
+	var FADE_MS = 1e3;
 	var FADE_STARTED_MARK = "data-cleansns-fading";
 	var fadePending = new Map();
 	var fadeObserver = new IntersectionObserver((entries) => {
@@ -656,7 +656,7 @@
 				el.style.setProperty("opacity", "0", "important");
 			});
 		});
-		window.setTimeout(() => el.style.setProperty(prop, value, "important"), 310);
+		window.setTimeout(() => el.style.setProperty(prop, value, "important"), 1060);
 	}
 	function hide(el, prop, value, animate) {
 		if (el.style.getPropertyValue(prop) === value) {

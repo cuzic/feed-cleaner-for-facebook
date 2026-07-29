@@ -1,6 +1,6 @@
 {
   "name": "feed-cleaner-for-facebook",
-  "version": "2.2.4",
+  "version": "2.2.5",
   "description": "Unofficial Facebook feed cleaner userscript (hides sponsored/suggested posts, Reels, Stories)",
   "private": true,
   "scripts": {

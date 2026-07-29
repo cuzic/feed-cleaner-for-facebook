@@ -147,7 +147,10 @@ function walkUpTo(el: Element, isTarget: (el: Element) => boolean): Element | nu
   return null;
 }
 
-const FADE_MS = 250;
+// Slow enough to actually register as "this post is leaving," and to give a
+// moment to read it before it's gone, rather than a snappy UI-chrome-style
+// transition.
+const FADE_MS = 1000;
 const FADE_STARTED_MARK = 'data-cleansns-fading';
 
 // Facebook's mobile feed is virtualized: it inserts a post's DOM well before
