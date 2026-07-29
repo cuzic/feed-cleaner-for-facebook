@@ -14,7 +14,7 @@ export default defineConfig({
         namespace: 'https://github.com/cuzic/feed-cleaner-for-facebook-debug',
         version: '2.2.0',
         description: 'Debug overlay: outlines matched CTA spans/wrappers instead of hiding them',
-        match: ['https://m.facebook.com/*'],
+        match: ['https://m.facebook.com/*', 'https://mbasic.facebook.com/*'],
         grant: 'none',
         updateURL:
           'https://raw.githubusercontent.com/cuzic/feed-cleaner-for-facebook/main/dist/facebook-feed-cleaner-debug.user.js',

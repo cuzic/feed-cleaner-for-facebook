@@ -8,6 +8,7 @@
 // @downloadURL  https://raw.githubusercontent.com/cuzic/feed-cleaner-for-facebook/main/dist/facebook-feed-cleaner-debug.user.js
 // @updateURL    https://raw.githubusercontent.com/cuzic/feed-cleaner-for-facebook/main/dist/facebook-feed-cleaner-debug.user.js
 // @match        https://m.facebook.com/*
+// @match        https://mbasic.facebook.com/*
 // @grant        none
 // ==/UserScript==
 
