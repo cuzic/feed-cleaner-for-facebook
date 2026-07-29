@@ -8,10 +8,26 @@ import { fmt } from './ui-i18n';
 // HideCategory.
 export type HideCategory = 'ad' | 'addFriend' | 'follow' | 'join';
 export const HIDE_CATEGORIES: readonly HideCategory[] = ['ad', 'addFriend', 'follow', 'join'];
-export type FeatureFlagKey = HideCategory | 'showLog';
-export type FeatureFlags = Record<HideCategory, boolean> & { showLog: boolean };
+export type FeatureFlagKey = HideCategory | 'showLog' | 'fadeAnimation' | 'badgePop' | 'milestoneCelebration';
+export type FeatureFlags = Record<HideCategory, boolean> & {
+  showLog: boolean;
+  // Purely cosmetic; each is a no-op without its prerequisite (badgePop and
+  // milestoneCelebration have nothing to animate unless showLog is also on).
+  fadeAnimation: boolean;
+  badgePop: boolean;
+  milestoneCelebration: boolean;
+};
 
-const DEFAULTS: FeatureFlags = { ad: true, addFriend: true, follow: true, join: true, showLog: false };
+const DEFAULTS: FeatureFlags = {
+  ad: true,
+  addFriend: true,
+  follow: true,
+  join: true,
+  showLog: false,
+  fadeAnimation: true,
+  badgePop: true,
+  milestoneCelebration: true,
+};
 // Kept as "hide." even though showLog isn't a hide toggle — changing the
 // prefix would silently reset every existing user's saved settings back to
 // these defaults, which is worse than the slightly-off name.

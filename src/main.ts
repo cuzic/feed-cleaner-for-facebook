@@ -29,7 +29,9 @@ registerCustomWordsMenu(LANG_KEY, UI, {
   join: DICT.join,
 });
 
-const log: HideLog | null = FLAGS.showLog ? createHideLog(UI) : null;
+const log: HideLog | null = FLAGS.showLog
+  ? createHideLog(UI, { badgePop: FLAGS.badgePop, milestoneCelebration: FLAGS.milestoneCelebration })
+  : null;
 
 type Category = keyof Dict;
 
@@ -145,8 +147,33 @@ function walkUpTo(el: Element, isTarget: (el: Element) => boolean): Element | nu
   return null;
 }
 
-function hide(el: HTMLElement, prop: string, value: string): void {
-  if (el.style.getPropertyValue(prop) !== value) {
+const FADE_MS = 250;
+
+// Without animation, `prop`/`value` (visibility:hidden or display:none) is
+// applied immediately, same as before. With it, opacity fades out first —
+// with pointer-events disabled right away so the fading post isn't still
+// clickable — and `prop`/`value` only lands once the fade finishes, so the
+// element doesn't jump to its final state mid-transition.
+//
+// `el.style.opacity !== '0'` (rather than HIDE_MARK) gates whether a fade
+// actually gets (re-)started, because this runs on every scan for elements
+// already mid-fade too: HIDE_MARK is set on the very first call (below), so
+// gating on it here would make the second scan's call — arriving before the
+// FADE_MS timer fires — fall through to the non-animated branch and snap the
+// element to its final state early, cutting the animation short.
+function hide(el: HTMLElement, prop: string, value: string, animate: boolean): void {
+  if (el.style.getPropertyValue(prop) === value) {
+    el.setAttribute(HIDE_MARK, '1');
+    return;
+  }
+  if (animate) {
+    if (el.style.opacity !== '0') {
+      el.style.setProperty('transition', `opacity ${FADE_MS}ms ease-out`, 'important');
+      el.style.setProperty('opacity', '0', 'important');
+      el.style.setProperty('pointer-events', 'none', 'important');
+      window.setTimeout(() => el.style.setProperty(prop, value, 'important'), FADE_MS + 20);
+    }
+  } else {
     el.style.setProperty(prop, value, 'important');
     if (prop === 'visibility') el.style.setProperty('pointer-events', 'none', 'important');
   }
@@ -155,7 +182,9 @@ function hide(el: HTMLElement, prop: string, value: string): void {
 
 function unhide(el: HTMLElement, prop: string): void {
   el.style.removeProperty(prop);
-  if (prop === 'visibility') el.style.removeProperty('pointer-events');
+  el.style.removeProperty('opacity');
+  el.style.removeProperty('transition');
+  el.style.removeProperty('pointer-events');
   el.removeAttribute(HIDE_MARK);
 }
 
@@ -202,7 +231,7 @@ function scanMobile(): void {
   });
   want.forEach((cat, wrapper) => {
     if (!wrapper.hasAttribute(HIDE_MARK)) log?.record(CATEGORY_LABELS[cat], wrapper);
-    hide(wrapper, 'visibility', 'hidden');
+    hide(wrapper, 'visibility', 'hidden', FLAGS.fadeAnimation);
   });
 }
 
@@ -247,7 +276,7 @@ function scanDesktop(): void {
   });
   want.forEach((cat, wrapper) => {
     if (!wrapper.hasAttribute(HIDE_MARK)) log?.record(CATEGORY_LABELS[cat], wrapper);
-    hide(wrapper, 'display', 'none');
+    hide(wrapper, 'display', 'none', FLAGS.fadeAnimation);
   });
 }
 

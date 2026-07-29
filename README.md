@@ -29,6 +29,13 @@ total for the page, not just what's in that list. It only ever shows content
 already visible to you in your own feed, and it's gone as soon as you turn
 the toggle back off.
 
+Three more toggles add a bit of polish on top, each independently on/off (all
+on by default): "Fade out hidden posts smoothly" (a brief opacity fade
+instead of an instant cut), "Pop the badge on each hide" (a small bounce on
+the `🧹` badge — needs the log toggle above to have anything to bounce), and
+"Celebrate hidden-post milestones" (a bigger gold-flash pop at 10, 25, 50,
+100, 250, 500, 1000, and every 5000 after — also needs the log toggle).
+
 **Safety guard against over-matching:** if a CTA match's ancestor wrapper
 turns out to be larger than a few screens' worth of height, it's skipped
 (with a one-time `console.warn`) instead of hidden — a single post is never

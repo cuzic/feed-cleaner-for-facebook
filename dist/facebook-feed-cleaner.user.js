@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Feed Cleaner for Facebook
 // @namespace    https://github.com/cuzic/feed-cleaner-for-facebook
-// @version      2.1.0
+// @version      2.2.0
 // @author       cuzic
-// @description  Unofficial, not affiliated with or endorsed by Meta/Facebook. Hides suggested/ad posts (Ad/Add friend/Follow/Join CTAs), the suggested-groups carousel, the stories bar (mobile), and the Follow/Join/Reels/Stories units (desktop) on Facebook. Works in any Facebook UI language, with the toggle menu and settings dialog themselves localized (ja/en/es/fr/pt/de/ko). Optional hidden-posts log shows what was hidden. See README to add or fix a language.
+// @description  Unofficial, not affiliated with or endorsed by Meta/Facebook. Hides suggested/ad posts (Ad/Add friend/Follow/Join CTAs), the suggested-groups carousel, the stories bar (mobile), and the Follow/Join/Reels/Stories units (desktop) on Facebook. Works in any Facebook UI language, with the toggle menu and settings dialog themselves localized (ja/en/es/fr/pt/de/ko). Optional hidden-posts log (with a smooth fade-out, a badge pop, and milestone celebrations, each independently toggleable) shows what was hidden. See README to add or fix a language.
 // @license      MIT
 // @supportURL   https://github.com/cuzic/feed-cleaner-for-facebook/issues
 // @downloadURL  https://raw.githubusercontent.com/cuzic/feed-cleaner-for-facebook/main/dist/facebook-feed-cleaner.user.js
@@ -203,7 +203,10 @@
 				addFriend: "「友達になる」を隠す",
 				follow: "「フォローする」を隠す",
 				join: "「参加する」を隠す",
-				showLog: "非表示ログを表示する"
+				showLog: "非表示ログを表示する",
+				fadeAnimation: "非表示演出をなめらかにする",
+				badgePop: "バッジをポップさせる",
+				milestoneCelebration: "節目でお祝い演出をする"
 			},
 			menuCustomWords: "あなたの言語の単語を設定",
 			category: {
@@ -224,7 +227,10 @@
 				addFriend: "Hide \"Add friend\"",
 				follow: "Hide \"Follow\"",
 				join: "Hide \"Join\"",
-				showLog: "Show hidden-posts log"
+				showLog: "Show hidden-posts log",
+				fadeAnimation: "Fade out hidden posts smoothly",
+				badgePop: "Pop the badge on each hide",
+				milestoneCelebration: "Celebrate hidden-post milestones"
 			},
 			menuCustomWords: "Set your language's words",
 			category: {
@@ -245,7 +251,10 @@
 				addFriend: "Ocultar \"Añadir amigo\"",
 				follow: "Ocultar \"Seguir\"",
 				join: "Ocultar \"Unirse\"",
-				showLog: "Mostrar registro de publicaciones ocultas"
+				showLog: "Mostrar registro de publicaciones ocultas",
+				fadeAnimation: "Desvanecer las publicaciones ocultas suavemente",
+				badgePop: "Animar la insignia al ocultar",
+				milestoneCelebration: "Celebrar los hitos de publicaciones ocultas"
 			},
 			menuCustomWords: "Configura las palabras de tu idioma",
 			category: {
@@ -266,7 +275,10 @@
 				addFriend: "Masquer « Ajouter »",
 				follow: "Masquer « Suivre »",
 				join: "Masquer « Rejoindre »",
-				showLog: "Afficher le journal des publications masquées"
+				showLog: "Afficher le journal des publications masquées",
+				fadeAnimation: "Estomper les publications masquées en douceur",
+				badgePop: "Faire rebondir le badge à chaque masquage",
+				milestoneCelebration: "Célébrer les jalons de publications masquées"
 			},
 			menuCustomWords: "Configurez les mots de votre langue",
 			category: {
@@ -287,7 +299,10 @@
 				addFriend: "Ocultar \"Adicionar amigo\"",
 				follow: "Ocultar \"Seguir\"",
 				join: "Ocultar \"Aderir\"",
-				showLog: "Mostrar registo de publicações ocultas"
+				showLog: "Mostrar registo de publicações ocultas",
+				fadeAnimation: "Esmaecer as publicações ocultas suavemente",
+				badgePop: "Animar o emblema a cada ocultação",
+				milestoneCelebration: "Celebrar marcos de publicações ocultas"
 			},
 			menuCustomWords: "Defina as palavras do seu idioma",
 			category: {
@@ -308,7 +323,10 @@
 				addFriend: "„Freund hinzufügen“ ausblenden",
 				follow: "„Folgen“ ausblenden",
 				join: "„Beitreten“ ausblenden",
-				showLog: "Protokoll ausgeblendeter Beiträge anzeigen"
+				showLog: "Protokoll ausgeblendeter Beiträge anzeigen",
+				fadeAnimation: "Ausgeblendete Beiträge sanft ausblenden",
+				badgePop: "Abzeichen bei jedem Ausblenden hüpfen lassen",
+				milestoneCelebration: "Meilensteine ausgeblendeter Beiträge feiern"
 			},
 			menuCustomWords: "Wörter für deine Sprache festlegen",
 			category: {
@@ -329,7 +347,10 @@
 				addFriend: "\"친구 추가\" 숨기기",
 				follow: "\"팔로우\" 숨기기",
 				join: "\"참여\" 숨기기",
-				showLog: "숨긴 게시물 기록 보기"
+				showLog: "숨긴 게시물 기록 보기",
+				fadeAnimation: "숨긴 게시물 부드럽게 사라지기",
+				badgePop: "숨길 때마다 배지 팝 효과",
+				milestoneCelebration: "숨김 마일스톤 축하 효과"
 			},
 			menuCustomWords: "내 언어 단어 설정",
 			category: {
@@ -360,7 +381,10 @@
 		addFriend: true,
 		follow: true,
 		join: true,
-		showLog: false
+		showLog: false,
+		fadeAnimation: true,
+		badgePop: true,
+		milestoneCelebration: true
 	};
 	var STORAGE_PREFIX = "hide.";
 	function loadFlags() {
@@ -454,7 +478,20 @@
 		const t = (el.getAttribute("aria-label") ?? el.querySelector("h2, h3, strong, [role=\"heading\"]")?.textContent ?? el.textContent ?? "").replace(/\s+/g, " ").trim();
 		return t.length > max ? t.slice(0, max) + "…" : t;
 	}
-	function createHideLog(ui) {
+	var MILESTONES = [
+		10,
+		25,
+		50,
+		100,
+		250,
+		500,
+		1e3,
+		2500,
+		5e3
+	];
+	var LAST_MILESTONE = 5e3;
+	var isMilestone = (n) => MILESTONES.includes(n) || n > LAST_MILESTONE && n % LAST_MILESTONE === 0;
+	function createHideLog(ui, opts) {
 		const entries = [];
 		let total = 0;
 		const seen = new WeakSet();
@@ -496,6 +533,32 @@
 			});
 			if (entries.length > MAX_ENTRIES) entries.shift();
 			render();
+			const badgeEl = ensureBadge();
+			if (opts.milestoneCelebration && isMilestone(total)) badgeEl.animate([
+				{
+					transform: "scale(1)",
+					backgroundColor: "#1c1e21"
+				},
+				{
+					transform: "scale(1.6)",
+					backgroundColor: "#f5a623"
+				},
+				{
+					transform: "scale(1)",
+					backgroundColor: "#1c1e21"
+				}
+			], {
+				duration: 700,
+				easing: "ease-out"
+			});
+			else if (opts.badgePop) badgeEl.animate([
+				{ transform: "scale(1)" },
+				{ transform: "scale(1.35)" },
+				{ transform: "scale(1)" }
+			], {
+				duration: 300,
+				easing: "ease-out"
+			});
 		} };
 	}
 	var HIDE_MARK = "data-cleansns-hidden";
@@ -515,7 +578,10 @@
 		follow: DICT.follow,
 		join: DICT.join
 	});
-	var log = FLAGS.showLog ? createHideLog(UI) : null;
+	var log = FLAGS.showLog ? createHideLog(UI, {
+		badgePop: FLAGS.badgePop,
+		milestoneCelebration: FLAGS.milestoneCelebration
+	}) : null;
 	var CATEGORY_LABELS = {
 		ad: UI.category.ad,
 		addFriend: UI.category.addFriend,
@@ -567,8 +633,20 @@
 		for (let cur = el; cur && cur !== document.body && hops < MAX_HOPS; cur = cur.parentElement, hops++) if (isTarget(cur)) return cur;
 		return null;
 	}
-	function hide(el, prop, value) {
-		if (el.style.getPropertyValue(prop) !== value) {
+	var FADE_MS = 250;
+	function hide(el, prop, value, animate) {
+		if (el.style.getPropertyValue(prop) === value) {
+			el.setAttribute(HIDE_MARK, "1");
+			return;
+		}
+		if (animate) {
+			if (el.style.opacity !== "0") {
+				el.style.setProperty("transition", `opacity ${FADE_MS}ms ease-out`, "important");
+				el.style.setProperty("opacity", "0", "important");
+				el.style.setProperty("pointer-events", "none", "important");
+				window.setTimeout(() => el.style.setProperty(prop, value, "important"), 270);
+			}
+		} else {
 			el.style.setProperty(prop, value, "important");
 			if (prop === "visibility") el.style.setProperty("pointer-events", "none", "important");
 		}
@@ -576,7 +654,9 @@
 	}
 	function unhide(el, prop) {
 		el.style.removeProperty(prop);
-		if (prop === "visibility") el.style.removeProperty("pointer-events");
+		el.style.removeProperty("opacity");
+		el.style.removeProperty("transition");
+		el.style.removeProperty("pointer-events");
 		el.removeAttribute(HIDE_MARK);
 	}
 	function scanMobile() {
@@ -602,7 +682,7 @@
 		});
 		want.forEach((cat, wrapper) => {
 			if (!wrapper.hasAttribute(HIDE_MARK)) log?.record(CATEGORY_LABELS[cat], wrapper);
-			hide(wrapper, "visibility", "hidden");
+			hide(wrapper, "visibility", "hidden", FLAGS.fadeAnimation);
 		});
 	}
 	function hasPagelet(el) {
@@ -634,7 +714,7 @@
 		});
 		want.forEach((cat, wrapper) => {
 			if (!wrapper.hasAttribute(HIDE_MARK)) log?.record(CATEGORY_LABELS[cat], wrapper);
-			hide(wrapper, "display", "none");
+			hide(wrapper, "display", "none", FLAGS.fadeAnimation);
 		});
 	}
 	var scan = location.hostname === "m.facebook.com" ? scanMobile : scanDesktop;

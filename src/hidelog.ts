@@ -18,7 +18,19 @@ function snippet(el: HTMLElement, max = 40): string {
   return t.length > max ? t.slice(0, max) + '…' : t;
 }
 
-export function createHideLog(ui: UiStrings): HideLog {
+export interface HideLogOptions {
+  badgePop: boolean;
+  milestoneCelebration: boolean;
+}
+
+// Fixed round numbers rather than "every 10" or "every N" — a milestone is
+// meant to feel like an occasional treat, not a per-10-posts metronome that
+// gets old fast once someone's hidden a few hundred things.
+const MILESTONES = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000];
+const LAST_MILESTONE = 5000;
+const isMilestone = (n: number): boolean => MILESTONES.includes(n) || (n > LAST_MILESTONE && n % LAST_MILESTONE === 0);
+
+export function createHideLog(ui: UiStrings, opts: HideLogOptions): HideLog {
   const entries: { label: string; text: string }[] = [];
   // `entries` is a ring buffer capped at MAX_ENTRIES for the expanded detail
   // list — the displayed count must NOT be entries.length, or it would stop
@@ -86,6 +98,27 @@ export function createHideLog(ui: UiStrings): HideLog {
       entries.push({ label, text: snippet(el) });
       if (entries.length > MAX_ENTRIES) entries.shift();
       render();
+
+      const badgeEl = ensureBadge();
+      if (opts.milestoneCelebration && isMilestone(total)) {
+        // A bigger, gold-flash version of the regular pop — milestones are
+        // rare enough that this doesn't need its own gating beyond "did we
+        // hit one", but it does supersede a regular pop on the same tick
+        // rather than stacking both animations on the element at once.
+        badgeEl.animate(
+          [
+            { transform: 'scale(1)', backgroundColor: '#1c1e21' },
+            { transform: 'scale(1.6)', backgroundColor: '#f5a623' },
+            { transform: 'scale(1)', backgroundColor: '#1c1e21' },
+          ],
+          { duration: 700, easing: 'ease-out' }
+        );
+      } else if (opts.badgePop) {
+        badgeEl.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.35)' }, { transform: 'scale(1)' }], {
+          duration: 300,
+          easing: 'ease-out',
+        });
+      }
     },
   };
 }

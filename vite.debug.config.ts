@@ -12,7 +12,7 @@ export default defineConfig({
       userscript: {
         name: 'Facebook Feed Cleaner DEBUG',
         namespace: 'https://github.com/cuzic/feed-cleaner-for-facebook-debug',
-        version: '2.1.0',
+        version: '2.2.0',
         description: 'Debug overlay: outlines matched CTA spans/wrappers instead of hiding them',
         match: ['https://m.facebook.com/*'],
         grant: 'none',
