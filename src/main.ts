@@ -148,6 +148,7 @@ function walkUpTo(el: Element, isTarget: (el: Element) => boolean): Element | nu
 }
 
 const FADE_MS = 250;
+const FADE_STARTED_MARK = 'data-cleansns-fading';
 
 // Without animation, `prop`/`value` (visibility:hidden or display:none) is
 // applied immediately, same as before. With it, opacity fades out first —
@@ -155,23 +156,37 @@ const FADE_MS = 250;
 // clickable — and `prop`/`value` only lands once the fade finishes, so the
 // element doesn't jump to its final state mid-transition.
 //
-// `el.style.opacity !== '0'` (rather than HIDE_MARK) gates whether a fade
-// actually gets (re-)started, because this runs on every scan for elements
-// already mid-fade too: HIDE_MARK is set on the very first call (below), so
-// gating on it here would make the second scan's call — arriving before the
-// FADE_MS timer fires — fall through to the non-animated branch and snap the
-// element to its final state early, cutting the animation short.
+// The opacity change is deferred by two rAFs rather than set in the same
+// tick as `transition`. Reason: this runs the moment a post is detected,
+// which for infinite-scroll content is often the same task that inserted it
+// into the DOM — i.e. before the browser has ever painted it at its natural
+// opacity. Setting `transition` and `opacity:0` together in that case gives
+// the browser nothing to visibly animate from, so it just appears already
+// gone (looks identical to no animation at all). Two rAFs guarantee a real
+// paint at the starting opacity before the transition's target value lands
+// (one rAF is sometimes still the same paint the mutation itself lands in).
+//
+// `FADE_STARTED_MARK` (rather than HIDE_MARK, or opacity itself) gates
+// whether a fade gets (re-)started, because this runs on every scan for
+// elements already mid-fade too. It has to be a synchronous marker set
+// before the rAFs fire — checking opacity would race, since a second scan
+// could land in the gap before the first rAF pair ever sets it.
 function hide(el: HTMLElement, prop: string, value: string, animate: boolean): void {
   if (el.style.getPropertyValue(prop) === value) {
     el.setAttribute(HIDE_MARK, '1');
     return;
   }
   if (animate) {
-    if (el.style.opacity !== '0') {
+    if (!el.hasAttribute(FADE_STARTED_MARK)) {
+      el.setAttribute(FADE_STARTED_MARK, '1');
       el.style.setProperty('transition', `opacity ${FADE_MS}ms ease-out`, 'important');
-      el.style.setProperty('opacity', '0', 'important');
       el.style.setProperty('pointer-events', 'none', 'important');
-      window.setTimeout(() => el.style.setProperty(prop, value, 'important'), FADE_MS + 20);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          el.style.setProperty('opacity', '0', 'important');
+        });
+      });
+      window.setTimeout(() => el.style.setProperty(prop, value, 'important'), FADE_MS + 60);
     }
   } else {
     el.style.setProperty(prop, value, 'important');
@@ -186,6 +201,7 @@ function unhide(el: HTMLElement, prop: string): void {
   el.style.removeProperty('transition');
   el.style.removeProperty('pointer-events');
   el.removeAttribute(HIDE_MARK);
+  el.removeAttribute(FADE_STARTED_MARK);
 }
 
 // "Newly hidden, so log it" is decided by HIDE_MARK's absence, reusing the
